@@ -1,0 +1,3838 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Schießtagebuch & Grafik-Generator</title>
+
+  <!-- Google Fonts: Barlow Condensed (Canvas-Grafik) & Inter (App-UI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            condensed: ['"Barlow Condensed"', 'Oswald', '"Arial Narrow"', 'sans-serif'],
+          },
+          colors: {
+            tactical: {
+              950: '#0D0F13',
+              900: '#13171D',
+              850: '#191E26',
+              800: '#212731',
+              700: '#2D3542',
+            },
+            gold: {
+              300: '#F0CA7A',
+              400: '#E2B862',
+              500: '#D8B46E',
+              600: '#B5893C',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    /* Dezente Scrollbars im Dark-Theme */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0D0F13; }
+    ::-webkit-scrollbar-thumb { background: #2D3542; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3E4859; }
+  </style>
+</head>
+
+<body class="bg-tactical-950 text-slate-100 font-sans antialiased overflow-x-hidden selection:bg-gold-500/30 selection:text-gold-300">
+
+  <!-- App-Hauptcontainer -->
+  <div class="min-h-screen flex flex-col max-w-7xl mx-auto px-3 sm:px-5 pt-3 pb-8">
+
+    <!-- ================= KOPFZEILE & HAUPTNAVIGATION ================= -->
+    <header class="space-y-3 mb-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <!-- App-Titel -->
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-gold-400/20 to-gold-600/10 border border-gold-500/30 flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5 text-gold-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="9"></circle>
+              <circle cx="12" cy="12" r="5"></circle>
+              <circle cx="12" cy="12" r="1.5" fill="currentColor"></circle>
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-white truncate">Schießtagebuch</h1>
+            <p id="headerDbStatus" class="text-[11px] sm:text-xs text-slate-400 truncate">IndexedDB • 0 Einträge</p>
+          </div>
+        </div>
+
+        <!-- Globale Schnell-Aktionen -->
+        <div class="flex items-center gap-2">
+          <button
+            id="btnHeaderNewSession"
+            type="button"
+            class="px-3 py-2 rounded-xl bg-gold-500/15 hover:bg-gold-500/25 border border-gold-500/35 text-xs font-bold text-gold-300 flex items-center gap-1.5 transition active:scale-95 touch-manipulation"
+          >
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 5v14M5 12h14" stroke-linecap="round"/>
+            </svg>
+            <span>Neues Training</span>
+          </button>
+
+          <div id="headerSummaryBadge" class="px-3 py-2 rounded-xl bg-tactical-850 border border-white/10 text-xs font-bold text-gold-400 shrink-0">
+            0 / 500
+          </div>
+        </div>
+      </div>
+
+      <!-- Haupt-Navigationsleiste (4 Ansichten) -->
+      <nav class="grid grid-cols-4 p-1 rounded-2xl bg-tactical-900 border border-white/10 gap-1" aria-label="Hauptnavigation">
+        <button id="navBtnEditor" type="button" class="nav-main-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 touch-manipulation">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 20h9M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="truncate">Erfassen</span>
+        </button>
+
+        <button id="navBtnLogbook" type="button" class="nav-main-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 touch-manipulation">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="truncate">Tagebuch</span>
+          <span id="navBadgeCount" class="px-1.5 py-0.5 rounded-md bg-white/10 text-[10px] font-bold">0</span>
+        </button>
+
+        <button id="navBtnStats" type="button" class="nav-main-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 touch-manipulation">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3v18h18M7 16l4-5 4 3 5-7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="truncate">Statistik</span>
+        </button>
+
+        <button id="navBtnBackup" type="button" class="nav-main-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 touch-manipulation">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+            <path d="M3 5v14a9 3 0 0 0 18 0V5M3 12a9 3 0 0 0 18 0" stroke-linecap="round"/>
+          </svg>
+          <span class="truncate">Daten</span>
+        </button>
+      </nav>
+    </header>
+
+    <!-- =================================================================== -->
+    <!-- ANSICHT 1: ERFASSEN & GRAFIK-GENERATOR                              -->
+    <!-- =================================================================== -->
+    <main id="viewEditor" class="space-y-3">
+
+      <!-- Session-Kontextleiste (Schnellauswahl gespeicherter Trainings + Speichern) -->
+      <div class="rounded-2xl bg-tactical-900 border border-white/10 p-3 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2 flex-1 min-w-0">
+          <!-- Status-Indikator -->
+          <div id="sessionStatusPill" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border shrink-0 bg-gold-500/15 border-gold-500/35 text-gold-300">
+            <span id="sessionStatusDot" class="w-2 h-2 rounded-full bg-gold-400"></span>
+            <span id="sessionStatusText">Neuer Entwurf</span>
+          </div>
+
+          <!-- Schnellauswahl älterer Ergebnisse direkt im Editor -->
+          <div class="flex-1 min-w-0">
+            <label for="quickSessionSelect" class="sr-only">Gespeichertes Training laden</label>
+            <select
+              id="quickSessionSelect"
+              class="w-full px-3 py-2 rounded-xl bg-tactical-950 border border-white/15 focus:border-gold-400 focus:outline-none text-xs sm:text-sm font-medium text-slate-200 truncate"
+            >
+              <option value="">— Älteres Ergebnis aus Tagebuch laden —</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Speicher- & Session-Buttons -->
+        <div class="flex items-center gap-2 shrink-0">
+          <button
+            id="btnSaveSession"
+            type="button"
+            class="flex-1 md:flex-none px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-900/30 transition active:scale-95 touch-manipulation"
+          >
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+              <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            <span id="btnSaveSessionLabel">Im Tagebuch speichern</span>
+          </button>
+
+          <button
+            id="btnSaveAsCopy"
+            type="button"
+            title="Als neuen separaten Eintrag im Tagebuch anlegen"
+            class="hidden px-3 py-2 rounded-xl bg-tactical-800 hover:bg-tactical-700 border border-white/15 text-xs font-semibold text-slate-200 transition active:scale-95 touch-manipulation"
+          >Als Kopie</button>
+
+          <button
+            id="btnDeleteCurrentSession"
+            type="button"
+            title="Aktuellen Eintrag aus dem Tagebuch löschen"
+            class="hidden p-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-300 transition active:scale-95 touch-manipulation"
+            aria-label="Aktuelles Training löschen"
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Haupt-Layout: Mobil gestapelt, Desktop 2-spaltig -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+        <!-- Linke/Obere Spalte: Live-Vorschau + Quick-Export -->
+        <section class="lg:col-span-7 lg:sticky lg:top-4 space-y-3">
+          <!-- 16:9 Live-Canvas-Vorschau -->
+          <div class="relative rounded-2xl overflow-hidden bg-tactical-900 border border-white/10 shadow-2xl">
+            <div class="aspect-video w-full relative bg-[#12151a]">
+              <canvas
+                id="previewCanvas"
+                width="1920"
+                height="1080"
+                class="w-full h-full block cursor-pointer"
+                title="Tippen für Vollbild-Vorschau"
+              ></canvas>
+              <!-- Vollbild-Zoom-Button -->
+              <button
+                id="btnOpenZoom"
+                type="button"
+                aria-label="Vollbild-Vorschau öffnen"
+                class="absolute bottom-2.5 right-2.5 px-2.5 py-1.5 rounded-xl bg-black/65 hover:bg-black/85 backdrop-blur-md border border-white/15 text-xs font-medium text-slate-200 flex items-center gap-1.5 transition active:scale-95"
+              >
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Zoom</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Export-Aktionsleiste -->
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+            <button
+              id="btnDownloadPng"
+              type="button"
+              class="col-span-2 sm:col-span-3 py-3 px-4 rounded-xl bg-gradient-to-b from-gold-400 to-gold-600 hover:from-gold-300 hover:to-gold-500 text-slate-950 font-bold text-sm shadow-lg shadow-gold-600/20 flex items-center justify-center gap-2 transition active:scale-[0.98] touch-manipulation"
+            >
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>PNG speichern (1920×1080)</span>
+            </button>
+
+            <button
+              id="btnSharePng"
+              type="button"
+              class="col-span-2 sm:col-span-2 py-3 px-4 rounded-xl bg-tactical-800 hover:bg-tactical-700 border border-white/15 text-slate-100 font-semibold text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] touch-manipulation"
+            >
+              <svg class="w-4 h-4 shrink-0 text-gold-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="18" cy="5" r="3"></circle>
+                <circle cx="6" cy="12" r="3"></circle>
+                <circle cx="18" cy="19" r="3"></circle>
+                <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" stroke-linecap="round"/>
+              </svg>
+              <span>Teilen</span>
+            </button>
+          </div>
+
+          <!-- Notiz-Vorschau unter dem Canvas (wenn Munition/Stand/Notiz gepflegt) -->
+          <div id="canvasMetaSummary" class="hidden rounded-xl bg-tactical-900/90 border border-white/10 px-3.5 py-2.5 text-xs space-y-1">
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-300">
+              <span id="metaSummaryAmmo" class="hidden"><strong class="text-gold-400">Munition:</strong> <span></span></span>
+              <span id="metaSummaryLocation" class="hidden"><strong class="text-gold-400">Stand:</strong> <span></span></span>
+            </div>
+            <p id="metaSummaryNotes" class="hidden text-slate-400 whitespace-pre-line"></p>
+          </div>
+
+          <!-- Desktop-Tastatur- & Statistik-Zeile -->
+          <div class="hidden lg:flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-tactical-900/80 border border-white/5 text-xs text-slate-400">
+            <span>Tastatur: <strong class="text-slate-200">0–9</strong>, <strong class="text-slate-200">T/+</strong> (=10), <strong class="text-slate-200">X</strong> bzw. <strong class="text-slate-200">A/C/D/M</strong>, <strong class="text-slate-200">⌫</strong>, <strong class="text-slate-200">Strg+S</strong></span>
+            <span id="desktopStatsHint" class="text-gold-400 font-medium"></span>
+          </div>
+        </section>
+
+        <!-- Rechte/Untere Spalte: Bedienung per Tabs (Treffer / Setup / Details) -->
+        <section class="lg:col-span-5 space-y-3">
+
+          <!-- Tab-Navigation -->
+          <div class="grid grid-cols-3 p-1 rounded-2xl bg-tactical-900 border border-white/10 gap-1">
+            <button id="tabBtnHits" type="button" class="py-2.5 px-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 touch-manipulation">
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+                <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+              </svg>
+              <span>Treffer</span>
+            </button>
+            <button id="tabBtnSetup" type="button" class="py-2.5 px-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 touch-manipulation">
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+              <span>Setup</span>
+            </button>
+            <button id="tabBtnDetails" type="button" class="py-2.5 px-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 touch-manipulation">
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              <span>Details</span>
+            </button>
+          </div>
+
+          <!-- ================= TAB 1: TREFFER-EINGABE ================= -->
+          <div id="panelHits" class="space-y-3">
+
+            <!-- Schnell-Leiste: Modus & Quick-Actions -->
+            <div class="flex flex-wrap items-center justify-between gap-2 bg-tactical-900 border border-white/10 rounded-2xl p-2.5">
+              <div class="flex items-center gap-1.5">
+                <button id="quickModeRings" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-semibold transition touch-manipulation">Ringe (0–10/X)</button>
+                <button id="quickModeIpsc" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-semibold transition touch-manipulation">IPSC (A/C/D/M)</button>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button id="btnClearAll" type="button" class="px-2.5 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-xs font-medium text-red-300 transition active:scale-95 touch-manipulation">Treffer leeren</button>
+              </div>
+            </div>
+
+            <!-- Schnelle Waffen-Vorschau-Zeile -->
+            <button
+              id="btnQuickJumpSetup"
+              type="button"
+              class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-tactical-900/90 hover:bg-tactical-850 border border-white/10 text-left transition active:scale-[0.99] touch-manipulation"
+            >
+              <div class="min-w-0">
+                <div id="quickBarWeapon" class="text-xs font-bold text-white truncate">CZ SHADOW 2 - 9×19</div>
+                <div id="quickBarMeta" class="text-[11px] text-slate-400 truncate">15m • 25. NOV 2026</div>
+              </div>
+              <span class="text-[11px] font-semibold text-gold-400 shrink-0 px-2 py-1 rounded-lg bg-gold-500/10 border border-gold-500/20">Ändern</span>
+            </button>
+
+            <!-- 10-Runden-Liste -->
+            <div id="roundsList" class="space-y-2 pb-1"></div>
+
+            <!-- Fixiertes Touch-Tastenfeld -->
+            <div class="sticky bottom-2 z-30 rounded-2xl bg-tactical-900/95 backdrop-blur-xl border border-gold-500/30 shadow-2xl shadow-black/80 p-3 space-y-2.5">
+              <div class="flex items-center justify-between text-xs px-0.5">
+                <span id="activeSlotLabel" class="font-semibold text-gold-400">Runde 01 • Schuss 1 / 5</span>
+                <span id="keypadHint" class="text-slate-400">Auto-Weiter aktiv</span>
+              </div>
+
+              <div id="keypadGrid" class="grid gap-2"></div>
+
+              <div class="grid grid-cols-3 gap-2 pt-0.5">
+                <button id="btnKeyBackspace" type="button" class="py-2.5 px-2.5 rounded-xl bg-tactical-800 hover:bg-tactical-700 border border-white/10 text-xs sm:text-sm font-semibold text-slate-200 flex items-center justify-center gap-1 transition active:scale-95 touch-manipulation">⌫ Zurück</button>
+                <button id="btnKeyClearSlot" type="button" class="py-2.5 px-2.5 rounded-xl bg-tactical-800 hover:bg-tactical-700 border border-white/10 text-xs sm:text-sm font-semibold text-slate-300 flex items-center justify-center gap-1 transition active:scale-95 touch-manipulation">Löschen</button>
+                <button id="btnKeyNextRound" type="button" class="py-2.5 px-2.5 rounded-xl bg-gold-500/15 hover:bg-gold-500/25 border border-gold-500/35 text-xs sm:text-sm font-semibold text-gold-400 flex items-center justify-center gap-1 transition active:scale-95 touch-manipulation">Nächste R. ↴</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================= TAB 2: SETUP & WAFFEN-PRESETS ================= -->
+          <div id="panelSetup" class="hidden space-y-3.5">
+
+            <!-- Karte 1: Waffen-Auswahl -->
+            <div class="rounded-2xl bg-tactical-900 border border-white/10 p-4 space-y-3.5">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-gold-400">Waffen-Auswahl & Presets</span>
+                <span class="text-[11px] text-slate-400">Setzt Name & Icon</span>
+              </div>
+
+              <div class="space-y-1.5">
+                <label for="selectWeaponPreset" class="sr-only">Waffen-Preset wählen</label>
+                <select id="selectWeaponPreset" class="w-full px-3.5 py-2.5 rounded-xl bg-tactical-950 border border-white/15 focus:border-gold-400 focus:outline-none text-sm font-semibold text-white"></select>
+              </div>
+
+              <div id="presetChipsContainer" class="space-y-3 pt-0.5"></div>
+
+              <div class="pt-3 border-t border-white/10 space-y-2">
+                <div class="flex items-center justify-between">
+                  <label for="inputWeaponName" class="text-xs font-bold uppercase tracking-wider text-slate-400">Waffenname (manuell editierbar)</label>
+                  <button id="btnSaveCustomWeapon" type="button" class="text-xs font-semibold text-gold-400 hover:text-gold-300 transition px-2.5 py-1 rounded-lg bg-gold-500/10 border border-gold-500/25 active:scale-95">+ Als eigene Waffe</button>
+                </div>
+                <input id="inputWeaponName" type="text" placeholder="z. B. CZ SHADOW 2 - 9×19" class="w-full px-3.5 py-2.5 rounded-xl bg-tactical-950 border border-white/15 focus:border-gold-400 focus:outline-none text-sm font-semibold text-white placeholder-slate-500" />
+              </div>
+            </div>
+
+            <!-- Karte 2: Distanz & Datum -->
+            <div class="rounded-2xl bg-tactical-900 border border-white/10 p-4 space-y-4">
+              <div class="space-y-2">
+                <label for="inputDistance" class="text-xs font-bold uppercase tracking-wider text-slate-400">Distanz</label>
+                <input id="inputDistance" type="text" placeholder="z. B. 15m" class="w-full px-3.5 py-2.5 rounded-xl bg-tactical-950 border border-white/15 focus:border-gold-400 focus:outline-none text-sm font-semibold text-white placeholder-slate-500" />
+                <div class="grid grid-cols-6 gap-1.5">
+                  <button type="button" data-dist="10m" class="dist-chip py-2 rounded-xl border text-xs font-semibold transition active:scale-95 touch-manipulation">10m</button>
+                  <button type="button" data-dist="15m" class="dist-chip py-2 rounded-xl border text-xs font-semibold transition active:scale-95 touch-manipulation">15m</button>
+                  <button type="button" data-dist="25m" class="dist-chip py-2 rounded-xl border text-xs font-semibold transition active:scale-95 touch-manipulation">25m</button>
+                  <button type="button" data-dist="50m" class="dist-chip py-2 rounded-xl border text-xs font-semibold transition active:scale-95 touch-manipulation">50m</button>
+                  <button type="button" data-dist="100m" class="dist-chip py-2 rounded-xl border text-xs font-semibold transition active:scale-95 touch-manipulation">100m</button>
+                  <button type="button" data-dist="200m" class="dist-chip py-2 rounded-xl border text-xs font-semibold transition active:scale-95 touch-manipulation">200m</button>
+                </div>
+              </div>
+
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <label for="inputDate" class="text-xs font-bold uppercase tracking-wider text-slate-400">Trainingsdatum</label>
+                  <button id="btnDateToday" type="button" class="text-xs font-semibold text-gold-400 hover:text-gold-300 px-2.5 py-1 rounded-lg bg-gold-500/10 border border-gold-500/20 transition active:scale-95">Heute</button>
+                </div>
+                <input id="inputDate" type="date" class="w-full px-3.5 py-2.5 rounded-xl bg-tactical-950 border border-white/15 focus:border-gold-400 focus:outline-none text-sm font-semibold text-white [color-scheme:dark]" />
+              </div>
+            </div>
+
+            <!-- Karte 3: Waffen-Icon -->
+            <div class="rounded-2xl bg-tactical-900 border border-white/10 p-4 space-y-2.5">
+              <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Waffen-Icon (rechts oben)</div>
+              <div class="grid grid-cols-3 gap-2">
+                <button type="button" data-weapon-icon="pistol" class="weapon-icon-btn p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition active:scale-95 touch-manipulation">
+                  <svg class="w-12 h-7 text-gold-400" viewBox="0 0 120 70" fill="currentColor">
+                    <path d="M10 14h84c4 0 7 2 8 5l3 3h-5v5l-4 3v5l8 27c1 3-1 5-4 5H80c-3 0-5-2-6-5l-7-22H48l-3 7c-1 2-3 3-5 3H30c-3 0-5-2-5-5v-8H14l-4-4V14zm26 19v10h11l3-10H36z"/>
+                  </svg>
+                  <span class="text-xs font-semibold">Pistole</span>
+                </button>
+                <button type="button" data-weapon-icon="ar" class="weapon-icon-btn p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition active:scale-95 touch-manipulation">
+                  <svg class="w-14 h-7 text-gold-400" viewBox="0 0 175 70" fill="currentColor">
+                    <path d="M4 26h14v-3h4v3h38v-4h50v-6h14v6h10l34 2v22h-6l-8-11h-26v6l5 16h-10l-7-14h-12l-5 20H88l4-20H64v-4H22v3h-4v-3H4v-7z"/>
+                  </svg>
+                  <span class="text-xs font-semibold">AR-Gewehr</span>
+                </button>
+                <button type="button" data-weapon-icon="precision" class="weapon-icon-btn p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition active:scale-95 touch-manipulation">
+                  <svg class="w-14 h-7 text-gold-400" viewBox="0 0 185 70" fill="currentColor">
+                    <path d="M4 27h12v-2h58v-4h4v-8H68v-4h18v-2h24v2h18v4h-10v8h12v4l46 2v22h-8l-8-10h-22l-5 15h-10l3-15h-12v10H92V37H38l-6 13h-6l6-13H16v-2H4v-8z"/>
+                  </svg>
+                  <span class="text-xs font-semibold">Präzision</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Karte 4: Zieltyp -->
+            <div class="rounded-2xl bg-tactical-900 border border-white/10 p-4 space-y-2.5">
+              <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Zieltyp (Icon & Wasserzeichen)</div>
+              <div class="grid grid-cols-3 gap-2">
+                <button type="button" data-target-type="target" class="target-type-btn p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition active:scale-95 touch-manipulation">
+                  <svg class="w-8 h-8" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r="28" fill="#C2A478" stroke="#2B2825" stroke-width="2"/>
+                    <circle cx="32" cy="32" r="22" fill="none" stroke="#2B2825" stroke-width="1.5"/>
+                    <circle cx="32" cy="32" r="15" fill="#2B2825"/>
+                    <circle cx="32" cy="32" r="9" fill="none" stroke="#C2A478" stroke-width="1.3"/>
+                    <circle cx="32" cy="32" r="3" fill="#C2A478"/>
+                  </svg>
+                  <span class="text-xs font-semibold">Zielscheibe</span>
+                </button>
+                <button type="button" data-target-type="wild" class="target-type-btn p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition active:scale-95 touch-manipulation">
+                  <svg class="w-8 h-8" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r="28" fill="#2B2825" stroke="#C2A478" stroke-width="2.5"/>
+                    <path d="M21 20l4-8 2 7 4-5-1 8 5 1 2 6 8 2c4 1 6 5 6 10v9h-5v-7h-4v7h-4v-9H26v9h-4v-7h-3v7h-4v-11c0-6 3-9 6-11l-1-6-5-3 3-3 3 2z" fill="#C2A478"/>
+                  </svg>
+                  <span class="text-xs font-semibold">Wild</span>
+                </button>
+                <button type="button" data-target-type="ipsc" class="target-type-btn p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition active:scale-95 touch-manipulation">
+                  <svg class="w-8 h-8" viewBox="0 0 64 64">
+                    <polygon points="24,6 40,6 40,14 52,22 52,46 42,58 22,58 12,46 12,22 24,14" fill="#C2A478" stroke="#2B2825" stroke-width="2.5"/>
+                    <rect x="25" y="21" width="14" height="22" fill="none" stroke="#2B2825" stroke-width="1.8" stroke-dasharray="2.5 1.5"/>
+                  </svg>
+                  <span class="text-xs font-semibold">IPSC-Ziel</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Karte 5: Wertungsmodus & Optionen -->
+            <div class="rounded-2xl bg-tactical-900 border border-white/10 p-4 space-y-3.5">
+              <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Wertungsmodus & Darstellung</div>
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" id="btnModeRings" class="p-3 rounded-xl border text-left transition active:scale-95 touch-manipulation">
+                  <div class="text-sm font-bold">Ringe (0–10 + X)</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">Max. 500 Ringe • X = 10</div>
+                </button>
+                <button type="button" id="btnModeIpsc" class="p-3 rounded-xl border text-left transition active:scale-95 touch-manipulation">
+                  <div class="text-sm font-bold">IPSC (A / C / D / M)</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">Max. 250 Punkte • Minor/Major</div>
+                </button>
+              </div>
+
+              <div id="ipscFactorWrap" class="hidden pt-2 border-t border-white/10 space-y-2">
+                <div class="text-xs font-semibold text-slate-400">IPSC Power-Faktor</div>
+                <div class="grid grid-cols-2 gap-2">
+                  <button type="button" id="btnFactorMinor" class="py-2 px-3 rounded-xl border text-xs font-semibold transition active:scale-95 touch-manipulation">Minor (5 / 3 / 1 / 0)</button>
+                  <button type="button" id="btnFactorMajor" class="py-2 px-3 rounded-xl border text-xs font-semibold transition active:scale-95 touch-manipulation">Major (5 / 4 / 2 / 0)</button>
+                </div>
+              </div>
+
+              <div class="pt-2.5 border-t border-white/10 space-y-2.5">
+                <label class="flex items-center justify-between gap-3 cursor-pointer select-none">
+                  <div>
+                    <div class="text-sm font-semibold text-slate-100">Treffer pro Runde absteigend sortieren</div>
+                    <div class="text-[11px] text-slate-400">Hohe Treffer (z. B. X, 10, 9) stehen links auf der Grafik</div>
+                  </div>
+                  <div class="relative shrink-0">
+                    <input id="toggleSortDesc" type="checkbox" class="sr-only peer" />
+                    <div class="w-11 h-6 rounded-full bg-tactical-700 peer-checked:bg-gold-500 transition-colors"></div>
+                    <div class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></div>
+                  </div>
+                </label>
+
+                <label id="wrapToggleShowX" class="flex items-center justify-between gap-3 cursor-pointer select-none">
+                  <div>
+                    <div class="text-sm font-semibold text-slate-100">X-Anzahl dezent anzeigen</div>
+                    <div class="text-[11px] text-slate-400">Zeigt Innenzehner in der Statistikbox (sobald ≥ 1× X)</div>
+                  </div>
+                  <div class="relative shrink-0">
+                    <input id="toggleShowX" type="checkbox" class="sr-only peer" />
+                    <div class="w-11 h-6 rounded-full bg-tactical-700 peer-checked:bg-gold-500 transition-colors"></div>
+                    <div class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================= TAB 3: TAGEBUCH-DETAILS (MUNITION, STAND, NOTIZEN) ================= -->
+          <div id="panelDetails" class="hidden space-y-3.5">
+            <div class="rounded-2xl bg-tactical-900 border border-white/10 p-4 space-y-4">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-gold-400">Tagebuch-Protokoll</span>
+                <span class="text-[11px] text-slate-400">Nicht auf der PNG-Grafik</span>
+              </div>
+
+              <!-- Munition -->
+              <div class="space-y-1.5">
+                <label for="inputAmmo" class="text-xs font-bold uppercase tracking-wider text-slate-400">Munition / Laborierung</label>
+                <input
+                  id="inputAmmo"
+                  type="text"
+                  list="ammoDatalist"
+                  placeholder="z. B. S&B 124gr FMJ, SK Rifle Match, GGG .308 168gr"
+                  class="w-full px-3.5 py-2.5 rounded-xl bg-tactical-950 border border-white/15 focus:border-gold-400 focus:outline-none text-sm font-medium text-white placeholder-slate-500"
+                />
+                <datalist id="ammoDatalist"></datalist>
+              </div>
+
+              <!-- Schießstand / Ort -->
+              <div class="space-y-1.5">
+                <label for="inputLocation" class="text-xs font-bold uppercase tracking-wider text-slate-400">Schießstand / Ort</label>
+                <input
+                  id="inputLocation"
+                  type="text"
+                  list="locationDatalist"
+                  placeholder="z. B. Schießstand Verein, 100m Stand 3"
+                  class="w-full px-3.5 py-2.5 rounded-xl bg-tactical-950 border border-white/15 focus:border-gold-400 focus:outline-none text-sm font-medium text-white placeholder-slate-500"
+                />
+                <datalist id="locationDatalist"></datalist>
+              </div>
+
+              <!-- Anschlag / Position -->
+              <div class="space-y-1.5">
+                <label for="inputPosition" class="text-xs font-bold uppercase tracking-wider text-slate-400">Anschlag / Bedingungen</label>
+                <input
+                  id="inputPosition"
+                  type="text"
+                  placeholder="z. B. Stehend frei, Zweibein/Sandsack, Wind 3 m/s"
+                  class="w-full px-3.5 py-2.5 rounded-xl bg-tactical-950 border border-white/15 focus:border-gold-400 focus:outline-none text-sm font-medium text-white placeholder-slate-500"
+                />
+              </div>
+
+              <!-- Notizen -->
+              <div class="space-y-1.5">
+                <label for="inputNotes" class="text-xs font-bold uppercase tracking-wider text-slate-400">Notizen (Trefferbild, Klicks, Technik)</label>
+                <textarea
+                  id="inputNotes"
+                  rows="5"
+                  placeholder="z. B. Abzugsverhalten, Klick-Verstellung (+0.2 MIL hoch), Störungen, Reinigung..."
+                  class="w-full px-3.5 py-2.5 rounded-xl bg-tactical-950 border border-white/15 focus:border-gold-400 focus:outline-none text-sm text-white placeholder-slate-500 resize-y"
+                ></textarea>
+              </div>
+            </div>
+
+            <!-- Metadaten-Box für gespeicherten Eintrag -->
+            <div id="entryMetaCard" class="hidden rounded-2xl bg-tactical-900 border border-white/10 p-4 text-xs text-slate-400 space-y-1.5">
+              <div class="font-bold uppercase tracking-wider text-slate-300">Eintrags-Metadaten</div>
+              <div class="flex justify-between"><span>Eintrags-ID:</span><span id="metaEntryId" class="font-mono text-slate-300"></span></div>
+              <div class="flex justify-between"><span>Erstellt:</span><span id="metaEntryCreated" class="text-slate-300"></span></div>
+              <div class="flex justify-between"><span>Zuletzt geändert:</span><span id="metaEntryUpdated" class="text-slate-300"></span></div>
+            </div>
+          </div>
+
+        </section>
+      </div>
+    </main>
+
+    <!-- =================================================================== -->
+    <!-- ANSICHT 2: TAGEBUCH / ARCHIV                                        -->
+    <!-- =================================================================== -->
+    <main id="viewLogbook" class="hidden space-y-4">
+
+      <!-- Filter- & Suchleiste -->
+      <div class="rounded-2xl bg-tactical-900 border border-white/10 p-3.5 space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5">
+          <!-- Textsuche -->
+          <div class="lg:col-span-4 relative">
+            <input
+              id="filterSearch"
+              type="search"
+              placeholder="Suche nach Waffe, Munition, Stand, Notiz..."
+              class="w-full pl-9 pr-3 py-2.5 rounded-xl bg-tactical-950 border border-white/15 focus:border-gold-400 focus:outline-none text-sm text-white placeholder-slate-500"
+            />
+            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35" stroke-linecap="round"/>
+            </svg>
+          </div>
+
+          <!-- Waffen-Filter -->
+          <div class="lg:col-span-3">
+            <select id="filterWeapon" class="w-full px-3 py-2.5 rounded-xl bg-tactical-950 border border-white/15 focus:border-gold-400 focus:outline-none text-sm text-slate-200">
+              <option value="">Alle Waffen</option>
+            </select>
+          </div>
+
+          <!-- Distanz-Filter -->
+          <div class="lg:col-span-2">
+            <select id="filterDistance" class="w-full px-3 py-2.5 rounded-xl bg-tactical-950 border border-white/15 focus:border-gold-400 focus:outline-none text-sm text-slate-200">
+              <option value="">Alle Distanzen</option>
+            </select>
+          </div>
+
+          <!-- Modus-Filter -->
+          <div class="lg:col-span-1">
+            <select id="filterMode" class="w-full px-2.5 py-2.5 rounded-xl bg-tactical-950 border border-white/15 focus:border-gold-400 focus:outline-none text-sm text-slate-200">
+              <option value="">Modus</option>
+              <option value="rings">Ringe</option>
+              <option value="ipsc">IPSC</option>
+            </select>
+          </div>
+
+          <!-- Sortierung -->
+          <div class="lg:col-span-2">
+            <select id="filterSort" class="w-full px-3 py-2.5 rounded-xl bg-tactical-950 border border-white/15 focus:border-gold-400 focus:outline-none text-sm text-slate-200">
+              <option value="date_desc">Datum (neueste)</option>
+              <option value="date_asc">Datum (älteste)</option>
+              <option value="score_desc">Ergebnis (höchste)</option>
+              <option value="avg_desc">Ø / Schuss (höchste)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Ergebnis-Zähler & Reset -->
+        <div class="flex items-center justify-between text-xs text-slate-400 pt-0.5">
+          <span id="logbookFilterSummary">0 Einträge angezeigt</span>
+          <button id="btnResetFilters" type="button" class="hidden text-gold-400 hover:text-gold-300 font-semibold">Filter zurücksetzen</button>
+        </div>
+      </div>
+
+      <!-- Liste der gespeicherten Trainings -->
+      <div id="logbookList" class="space-y-2.5"></div>
+
+      <!-- Leerzustand -->
+      <div id="logbookEmptyState" class="hidden rounded-2xl bg-tactical-900 border border-dashed border-white/15 p-8 text-center space-y-3">
+        <div class="w-12 h-12 mx-auto rounded-2xl bg-tactical-850 border border-white/10 flex items-center justify-center text-gold-400">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
+          </svg>
+        </div>
+        <div class="space-y-1">
+          <h2 class="text-base font-bold text-white">Noch keine passenden Einträge</h2>
+          <p class="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">Erfasse ein Training im Editor und speichere es im Tagebuch oder importiere ein bestehendes JSON-Backup.</p>
+        </div>
+        <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
+          <button id="btnEmptyNewSession" type="button" class="px-4 py-2 rounded-xl bg-gold-500 hover:bg-gold-400 text-slate-950 font-bold text-xs sm:text-sm transition">Neues Training erfassen</button>
+          <button id="btnEmptyLoadSamples" type="button" class="px-4 py-2 rounded-xl bg-tactical-800 hover:bg-tactical-700 border border-white/15 text-slate-200 font-semibold text-xs sm:text-sm transition">Beispieldaten anlegen</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- =================================================================== -->
+    <!-- ANSICHT 3: STATISTIK & VERLAUF                                      -->
+    <!-- =================================================================== -->
+    <main id="viewStats" class="hidden space-y-4">
+
+      <!-- Statistik-Filter -->
+      <div class="rounded-2xl bg-tactical-900 border border-white/10 p-3.5 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <div>
+          <label for="statsFilterWeapon" class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Waffe</label>
+          <select id="statsFilterWeapon" class="w-full px-3 py-2 rounded-xl bg-tactical-950 border border-white/15 text-sm text-slate-200 focus:border-gold-400 focus:outline-none">
+            <option value="">Alle Waffen</option>
+          </select>
+        </div>
+        <div>
+          <label for="statsFilterDistance" class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Distanz</label>
+          <select id="statsFilterDistance" class="w-full px-3 py-2 rounded-xl bg-tactical-950 border border-white/15 text-sm text-slate-200 focus:border-gold-400 focus:outline-none">
+            <option value="">Alle Distanzen</option>
+          </select>
+        </div>
+        <div>
+          <label for="statsFilterMode" class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Wertungsmodus</label>
+          <select id="statsFilterMode" class="w-full px-3 py-2 rounded-xl bg-tactical-950 border border-white/15 text-sm text-slate-200 focus:border-gold-400 focus:outline-none">
+            <option value="rings">Ringe (0–10/X)</option>
+            <option value="ipsc">IPSC (A/C/D/M)</option>
+            <option value="">Alle Modi (nur Schusszahl)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- KPI-Karten -->
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <div class="rounded-2xl bg-tactical-900 border border-white/10 p-4">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Trainings</div>
+          <div id="kpiSessions" class="text-3xl font-condensed font-bold text-white mt-1">0</div>
+        </div>
+        <div class="rounded-2xl bg-tactical-900 border border-white/10 p-4">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Schüsse gesamt</div>
+          <div id="kpiShots" class="text-3xl font-condensed font-bold text-gold-400 mt-1">0</div>
+        </div>
+        <div class="rounded-2xl bg-tactical-900 border border-white/10 p-4">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Bestleistung</div>
+          <div id="kpiBest" class="text-3xl font-condensed font-bold text-emerald-400 mt-1">–</div>
+          <div id="kpiBestSub" class="text-[11px] text-slate-400 truncate mt-0.5"></div>
+        </div>
+        <div class="rounded-2xl bg-tactical-900 border border-white/10 p-4">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Ø pro Serie</div>
+          <div id="kpiAvgSeries" class="text-3xl font-condensed font-bold text-white mt-1">–</div>
+        </div>
+        <div class="col-span-2 lg:col-span-1 rounded-2xl bg-tactical-900 border border-white/10 p-4">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Ø pro Schuss</div>
+          <div id="kpiAvgShot" class="text-3xl font-condensed font-bold text-white mt-1">–</div>
+          <div id="kpiXTotal" class="text-[11px] text-gold-400/80 mt-0.5"></div>
+        </div>
+      </div>
+
+      <!-- Verlaufsdiagramm (SVG) -->
+      <div class="rounded-2xl bg-tactical-900 border border-white/10 p-4 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-sm font-bold text-white">Leistungsverlauf</h2>
+            <p class="text-xs text-slate-400">Gesamtergebnis je Training (chronologisch) – Punkt anklicken zum Öffnen</p>
+          </div>
+          <div id="chartMetricSwitch" class="flex items-center gap-1 bg-tactical-950 p-1 rounded-xl border border-white/10">
+            <button type="button" data-metric="total" class="chart-metric-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition">Gesamt</button>
+            <button type="button" data-metric="avgShot" class="chart-metric-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition">Ø / Schuss</button>
+          </div>
+        </div>
+        <div id="trendChartContainer" class="w-full overflow-x-auto"></div>
+      </div>
+
+      <!-- Waffen-Schusszähler & Auswertung (Wartung / Laufbelastung) -->
+      <div class="rounded-2xl bg-tactical-900 border border-white/10 p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-bold text-white">Waffen-Übersicht & Schussbelastung</h2>
+            <p class="text-xs text-slate-400">Kumulierte Schüsse, Trainingsanzahl und Bestwerte je Waffe (alle gespeicherten Einträge)</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr class="border-b border-white/10 text-[11px] uppercase tracking-wider text-slate-400">
+                <th class="py-2.5 pr-3">Waffe</th>
+                <th class="py-2.5 px-2 text-right">Trainings</th>
+                <th class="py-2.5 px-2 text-right">Schüsse</th>
+                <th class="py-2.5 px-2 text-right">Ø / Schuss</th>
+                <th class="py-2.5 px-2 text-right">Bestwert</th>
+                <th class="py-2.5 pl-2 text-right">Letztes Training</th>
+              </tr>
+            </thead>
+            <tbody id="weaponStatsTableBody" class="divide-y divide-white/5"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <!-- =================================================================== -->
+    <!-- ANSICHT 4: DATENBANK & BACKUP                                       -->
+    <!-- =================================================================== -->
+    <main id="viewBackup" class="hidden space-y-4">
+
+      <!-- Speicher-Status & Auto-Sync -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        <!-- Karte 1: Lokale Datenbank (IndexedDB) -->
+        <div class="rounded-2xl bg-tactical-900 border border-white/10 p-5 space-y-4">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h2 class="text-base font-bold text-white">Lokale Datenbank (IndexedDB)</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Alle Einträge werden dauerhaft strukturiert im Browser gespeichert.</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold shrink-0">Aktiv</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5 text-xs">
+            <div class="p-3 rounded-xl bg-tactical-950 border border-white/10">
+              <div class="text-slate-400">Gespeicherte Trainings</div>
+              <div id="backupCountSessions" class="text-xl font-condensed font-bold text-white mt-0.5">0</div>
+            </div>
+            <div class="p-3 rounded-xl bg-tactical-950 border border-white/10">
+              <div class="text-slate-400">Gesamtschüsse erfasst</div>
+              <div id="backupCountShots" class="text-xl font-condensed font-bold text-gold-400 mt-0.5">0</div>
+            </div>
+            <div class="p-3 rounded-xl bg-tactical-950 border border-white/10">
+              <div class="text-slate-400">Eigene Waffen</div>
+              <div id="backupCountWeapons" class="text-xl font-condensed font-bold text-white mt-0.5">0</div>
+            </div>
+            <div class="p-3 rounded-xl bg-tactical-950 border border-white/10">
+              <div class="text-slate-400">Letztes JSON-Backup</div>
+              <div id="backupLastExport" class="text-sm font-semibold text-slate-200 mt-1">Noch keines</div>
+            </div>
+          </div>
+
+          <!-- Direkte Datei-Synchronisierung (Desktop Chrome/Edge File System Access API) -->
+          <div id="fsSyncCard" class="p-3.5 rounded-xl bg-tactical-950 border border-white/10 space-y-2.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-bold text-gold-400 uppercase tracking-wider">Lokale Backup-Datei (Direkt-Sync)</span>
+              <span id="fsSyncBadge" class="text-[11px] text-slate-400">Nicht verknüpft</span>
+            </div>
+            <p class="text-xs text-slate-400">Verknüpfe eine lokale <code class="text-slate-200">.json</code>-Datei (z. B. in OneDrive/Google Drive/NAS). Änderungen werden auf Wunsch direkt dorthin geschrieben.</p>
+            <div class="flex flex-wrap gap-2">
+              <button id="btnLinkBackupFile" type="button" class="px-3 py-2 rounded-xl bg-tactical-800 hover:bg-tactical-700 border border-white/15 text-xs font-semibold text-white transition active:scale-95">Backup-Datei verknüpfen / neu anlegen</button>
+              <button id="btnSyncNowFile" type="button" class="hidden px-3 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/35 text-xs font-semibold text-emerald-300 transition active:scale-95">Jetzt in Datei schreiben</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Karte 2: Export & Import -->
+        <div class="rounded-2xl bg-tactical-900 border border-white/10 p-5 space-y-4">
+          <div>
+            <h2 class="text-base font-bold text-white">Backup, Import & Export</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Sichere dein Tagebuch regelmäßig oder übertrage es zwischen Smartphone und PC.</p>
+          </div>
+
+          <!-- JSON Export / Import -->
+          <div class="space-y-2">
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Vollständiges Tagebuch (JSON)</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button id="btnExportJson" type="button" class="py-2.5 px-3.5 rounded-xl bg-gold-500 hover:bg-gold-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition active:scale-95">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>JSON-Backup speichern</span>
+              </button>
+
+              <label class="py-2.5 px-3.5 rounded-xl bg-tactical-800 hover:bg-tactical-700 border border-white/15 text-slate-100 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition active:scale-95">
+                <svg class="w-4 h-4 text-gold-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>JSON importieren</span>
+                <input id="inputImportJson" type="file" accept=".json,application/json" class="hidden" />
+              </label>
+            </div>
+            <p class="text-[11px] text-slate-400">Beim Import werden neue Einträge sicher ergänzt und bestehende IDs aktualisiert (keine Duplikate).</p>
+          </div>
+
+          <!-- CSV Export -->
+          <div class="pt-3 border-t border-white/10 space-y-2">
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Tabellen-Export (Excel / Auswertung)</div>
+            <button id="btnExportCsv" type="button" class="w-full py-2.5 px-3.5 rounded-xl bg-tactical-800 hover:bg-tactical-700 border border-white/15 text-slate-100 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition active:scale-95">
+              <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <path d="M8 13h8M8 17h8"/>
+              </svg>
+              <span>Alle Trainings als CSV exportieren</span>
+            </button>
+          </div>
+
+          <!-- Testdaten & Reset -->
+          <div class="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
+            <button id="btnSeedSamples" type="button" class="px-3 py-2 rounded-xl bg-tactical-800 hover:bg-tactical-700 border border-white/10 text-xs font-semibold text-slate-200 transition active:scale-95">+ Beispiel-Trainings hinzufügen</button>
+            <button id="btnWipeDatabase" type="button" class="px-3 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-xs font-semibold text-red-300 transition active:scale-95">Gesamtes Tagebuch leeren</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- ================= VOLLBILD-VORSCHAU MODAL ================= -->
+  <div id="zoomModal" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6">
+    <div class="w-full max-w-6xl space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-semibold text-slate-200">Vorschau 1920 × 1080 px (16:9)</span>
+        <button id="btnCloseZoom" type="button" class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold text-white transition">Schließen ✕</button>
+      </div>
+      <div class="rounded-2xl overflow-hidden border border-white/15 shadow-2xl bg-[#12151a]">
+        <img id="zoomPreviewImg" src="" alt="Vollbild-Vorschau der Trainingsgrafik" class="w-full h-auto block" />
+      </div>
+      <div class="flex justify-end gap-2">
+        <button id="btnZoomShare" type="button" class="px-4 py-2.5 rounded-xl bg-tactical-800 hover:bg-tactical-700 border border-white/15 text-sm font-semibold text-white transition">Teilen</button>
+        <button id="btnZoomDownload" type="button" class="px-4 py-2.5 rounded-xl bg-gold-500 hover:bg-gold-400 text-sm font-bold text-slate-950 transition">PNG herunterladen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= BESTÄTIGUNGS-MODAL ================= -->
+  <div id="confirmModal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-sm rounded-2xl bg-tactical-900 border border-white/15 p-5 shadow-2xl space-y-4">
+      <h2 id="confirmTitle" class="text-base font-bold text-white">Bestätigen</h2>
+      <p id="confirmMessage" class="text-sm text-slate-300 leading-relaxed"></p>
+      <div class="grid grid-cols-2 gap-2.5 pt-1">
+        <button id="btnConfirmCancel" type="button" class="py-2.5 px-3 rounded-xl bg-tactical-800 hover:bg-tactical-700 border border-white/10 text-sm font-semibold text-slate-200 transition">Abbrechen</button>
+        <button id="btnConfirmOk" type="button" class="py-2.5 px-3 rounded-xl bg-red-500 hover:bg-red-400 text-sm font-bold text-white transition">Bestätigen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TOAST-BENACHRICHTIGUNG ================= -->
+  <div id="toast" class="pointer-events-none fixed top-4 left-1/2 -translate-x-1/2 z-50 opacity-0 -translate-y-2 transition-all duration-200">
+    <div id="toastInner" class="px-4 py-2.5 rounded-xl bg-tactical-800/95 backdrop-blur-md border border-gold-500/35 text-sm font-semibold text-white shadow-2xl">
+      Gespeichert
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      /* =====================================================================
+       * 1. KONSTANTEN, PRESETS & FARBSKALEN
+       * ===================================================================== */
+      const DB_NAME = 'SchiessTagebuchDB';
+      const DB_VERSION = 1;
+      const STORE_SESSIONS = 'sessions';
+      const STORE_META = 'meta';
+
+      const LEGACY_STORAGE_KEY = 'shooting_gen_v2';
+      const DRAFT_STORAGE_KEY = 'shooting_logbook_draft_v1';
+      const ROUNDS_COUNT = 10;
+      const SHOTS_PER_ROUND = 5;
+
+      const GERMAN_MONTHS = [
+        'JAN', 'FEB', 'MÄR', 'APR', 'MAI', 'JUN',
+        'JUL', 'AUG', 'SEP', 'OKT', 'NOV', 'DEZ'
+      ];
+
+      const STANDARD_WEAPON_CATEGORIES = [
+        {
+          id: 'pistol',
+          label: 'Pistole',
+          icon: 'pistol',
+          weapons: [
+            'CZ SHADOW 2 - 9×19',
+            'CZ SHADOW 2 OR - 9×19',
+            'CZ SHADOW 2 - .22lr',
+            'Glock 17 Gen 5 - 9×19',
+            'CZ Shadow - 9×19',
+            'CZ Shadow - .22lr'
+          ]
+        },
+        {
+          id: 'ar',
+          label: 'AR-Gewehr',
+          icon: 'ar',
+          weapons: [
+            'Schmeisser AR15 - .223',
+            'Schmeisser AR15 - .22lr'
+          ]
+        },
+        {
+          id: 'precision',
+          label: 'Präzisionsgewehr',
+          icon: 'precision',
+          weapons: [
+            'Ruger Precision - .22lr',
+            'Steyr Arms RMS - .308'
+          ]
+        }
+      ];
+
+      const ALL_STANDARD_PRESETS = STANDARD_WEAPON_CATEGORIES.flatMap(cat =>
+        cat.weapons.map(name => ({ name, icon: cat.icon, category: cat.label }))
+      );
+
+      const RING_TILE_STYLES = {
+        'X':  { top: '#F0CA52', bottom: '#BD8C1A', border: '#FFE58A', text: '#111111' },
+        '10': { top: '#CFA02D', bottom: '#966D14', border: '#E4BA4E', text: '#111111' },
+        '9':  { top: '#D97C29', bottom: '#9E4D10', border: '#EE9B48', text: '#111111' },
+        '8':  { top: '#6A737D', bottom: '#4B525A', border: '#8A939E', text: '#F2F4F7' },
+        '7':  { top: '#545C65', bottom: '#3B4148', border: '#6E7782', text: '#E3E7EC' },
+        '6':  { top: '#464D55', bottom: '#32373E', border: '#5C646E', text: '#D4D9DF' },
+        '5':  { top: '#3C4249', bottom: '#2A2F35', border: '#505760', text: '#C6CBD2' },
+        '4':  { top: '#33383F', bottom: '#23272C', border: '#464C55', text: '#B7BDC5' },
+        '3':  { top: '#2B3036', bottom: '#1D2126', border: '#3C424B', text: '#A7AEB7' },
+        '2':  { top: '#24282E', bottom: '#181B1F', border: '#333941', text: '#979EA8' },
+        '1':  { top: '#1E2126', bottom: '#13161A', border: '#2C3138', text: '#868D97' },
+        '0':  { top: '#181B1F', bottom: '#0F1114', border: '#262B31', text: '#727983' }
+      };
+
+      const IPSC_TILE_STYLES = {
+        'A': { top: '#CFA02D', bottom: '#966D14', border: '#E4BA4E', text: '#111111' },
+        'C': { top: '#D97C29', bottom: '#9E4D10', border: '#EE9B48', text: '#111111' },
+        'D': { top: '#6A737D', bottom: '#4B525A', border: '#8A939E', text: '#F2F4F7' },
+        'M': { top: '#181B1F', bottom: '#0F1114', border: '#282D34', text: '#7C838D' }
+      };
+
+      const IPSC_POINTS = {
+        minor: { A: 5, C: 3, D: 1, M: 0 },
+        major: { A: 5, C: 4, D: 2, M: 0 }
+      };
+
+      const RING_SORT_WEIGHT = {
+        'X': 12, '10': 11, '9': 10, '8': 9, '7': 8, '6': 7,
+        '5': 6, '4': 5, '3': 4, '2': 3, '1': 2, '0': 1, '': 0
+      };
+      const IPSC_SORT_WEIGHT = {
+        'A': 4, 'C': 3, 'D': 2, 'M': 1, '': 0
+      };
+
+      /* =====================================================================
+       * 2. INDEXEDDB DATENBANK-LAYER
+       * ===================================================================== */
+      let db = null;
+      let backupFileHandle = null;
+
+      function openDatabase() {
+        return new Promise((resolve, reject) => {
+          if (!('indexedDB' in window)) {
+            reject(new Error('IndexedDB nicht verfügbar'));
+            return;
+          }
+          const req = indexedDB.open(DB_NAME, DB_VERSION);
+          req.onupgradeneeded = (event) => {
+            const database = event.target.result;
+            if (!database.objectStoreNames.contains(STORE_SESSIONS)) {
+              const store = database.createObjectStore(STORE_SESSIONS, { keyPath: 'id' });
+              store.createIndex('date', 'date', { unique: false });
+              store.createIndex('weaponName', 'weaponName', { unique: false });
+              store.createIndex('scoringMode', 'scoringMode', { unique: false });
+            }
+            if (!database.objectStoreNames.contains(STORE_META)) {
+              database.createObjectStore(STORE_META, { keyPath: 'key' });
+            }
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      function dbGetAllSessions() {
+        return new Promise((resolve, reject) => {
+          if (!db) return resolve([]);
+          const tx = db.transaction(STORE_SESSIONS, 'readonly');
+          const req = tx.objectStore(STORE_SESSIONS).getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      function dbPutSession(session) {
+        return new Promise((resolve, reject) => {
+          if (!db) return reject(new Error('Datenbank nicht offen'));
+          const tx = db.transaction(STORE_SESSIONS, 'readwrite');
+          tx.objectStore(STORE_SESSIONS).put(session);
+          tx.oncomplete = () => resolve(session);
+          tx.onerror = () => reject(tx.error);
+        });
+      }
+
+      function dbDeleteSession(id) {
+        return new Promise((resolve, reject) => {
+          if (!db) return reject(new Error('Datenbank nicht offen'));
+          const tx = db.transaction(STORE_SESSIONS, 'readwrite');
+          tx.objectStore(STORE_SESSIONS).delete(id);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      }
+
+      function dbClearSessions() {
+        return new Promise((resolve, reject) => {
+          if (!db) return reject(new Error('Datenbank nicht offen'));
+          const tx = db.transaction(STORE_SESSIONS, 'readwrite');
+          tx.objectStore(STORE_SESSIONS).clear();
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      }
+
+      function dbGetMeta(key, fallback = null) {
+        return new Promise((resolve) => {
+          if (!db) return resolve(fallback);
+          const tx = db.transaction(STORE_META, 'readonly');
+          const req = tx.objectStore(STORE_META).get(key);
+          req.onsuccess = () => resolve(req.result ? req.result.value : fallback);
+          req.onerror = () => resolve(fallback);
+        });
+      }
+
+      function dbSetMeta(key, value) {
+        return new Promise((resolve, reject) => {
+          if (!db) return resolve();
+          const tx = db.transaction(STORE_META, 'readwrite');
+          tx.objectStore(STORE_META).put({ key, value });
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      }
+
+      /* =====================================================================
+       * 3. HILFSFUNKTIONEN & DATENMODELL
+       * ===================================================================== */
+      function createId() {
+        if (window.crypto && typeof crypto.randomUUID === 'function') {
+          return crypto.randomUUID();
+        }
+        return 'sess_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
+      }
+
+      function getTodayIso() {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      }
+
+      function createEmptyRounds() {
+        return Array.from({ length: ROUNDS_COUNT }, () => Array(SHOTS_PER_ROUND).fill(''));
+      }
+
+      function normalizeRounds(arr) {
+        if (!Array.isArray(arr) || arr.length !== ROUNDS_COUNT) {
+          return createEmptyRounds();
+        }
+        return arr.map(row => {
+          if (!Array.isArray(row) || row.length !== SHOTS_PER_ROUND) {
+            return Array(SHOTS_PER_ROUND).fill('');
+          }
+          return row.map(v => (v === null || v === undefined ? '' : String(v)));
+        });
+      }
+
+      function createNewEditorState(base = {}) {
+        return {
+          id: null, // null = noch nicht im Tagebuch gespeichert
+          createdAt: null,
+          updatedAt: null,
+          weaponName: base.weaponName || 'CZ SHADOW 2 - 9×19',
+          distance: base.distance || '15m',
+          date: base.date || getTodayIso(),
+          weaponIcon: base.weaponIcon || 'pistol',
+          targetType: base.targetType || 'target',
+          scoringMode: base.scoringMode || 'rings',
+          ipscFactor: base.ipscFactor || 'minor',
+          sortRoundHitsDesc: base.sortRoundHitsDesc !== undefined ? Boolean(base.sortRoundHitsDesc) : true,
+          showXCount: base.showXCount !== undefined ? Boolean(base.showXCount) : true,
+          ringRounds: base.ringRounds ? normalizeRounds(base.ringRounds) : createEmptyRounds(),
+          ipscRounds: base.ipscRounds ? normalizeRounds(base.ipscRounds) : createEmptyRounds(),
+          ammo: base.ammo || '',
+          location: base.location || '',
+          position: base.position || '',
+          notes: base.notes || ''
+        };
+      }
+
+      function cloneSessionToEditor(sess) {
+        return {
+          id: sess.id || null,
+          createdAt: sess.createdAt || null,
+          updatedAt: sess.updatedAt || null,
+          weaponName: sess.weaponName || 'Unbenannt',
+          distance: sess.distance || '15m',
+          date: sess.date || getTodayIso(),
+          weaponIcon: sess.weaponIcon || 'pistol',
+          targetType: sess.targetType || 'target',
+          scoringMode: sess.scoringMode === 'ipsc' ? 'ipsc' : 'rings',
+          ipscFactor: sess.ipscFactor === 'major' ? 'major' : 'minor',
+          sortRoundHitsDesc: sess.sortRoundHitsDesc !== undefined ? Boolean(sess.sortRoundHitsDesc) : true,
+          showXCount: sess.showXCount !== undefined ? Boolean(sess.showXCount) : true,
+          ringRounds: normalizeRounds(sess.ringRounds || (sess.scoringMode !== 'ipsc' ? sess.rounds : null)),
+          ipscRounds: normalizeRounds(sess.ipscRounds || (sess.scoringMode === 'ipsc' ? sess.rounds : null)),
+          ammo: sess.ammo || '',
+          location: sess.location || '',
+          position: sess.position || '',
+          notes: sess.notes || ''
+        };
+      }
+
+      /* =====================================================================
+       * 4. APPLIKATIONS-ZUSTAND
+       * ===================================================================== */
+      let state = createNewEditorState();
+      let sessions = [];             // Alle aus IndexedDB geladenen Einträge
+      let customWeapons = [];        // In IndexedDB Meta gespeichert
+      let lastBackupAt = null;
+      let isDirty = false;           // Ungespeicherte Änderungen im Editor?
+
+      let activeView = 'editor';     // 'editor' | 'logbook' | 'stats' | 'backup'
+      let activeTab = 'hits';        // 'hits' | 'setup' | 'details'
+      let activeRound = 0;
+      let activeShot = 0;
+      let chartMetric = 'total';     // 'total' | 'avgShot'
+
+      let confirmCallback = null;
+      let toastTimer = null;
+
+      function getCurrentRounds(targetState = state) {
+        return targetState.scoringMode === 'ipsc' ? targetState.ipscRounds : targetState.ringRounds;
+      }
+
+      function saveDraftToLocal() {
+        try {
+          localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ state, isDirty }));
+        } catch (err) {
+          // Ignorieren falls voll/gesperrt
+        }
+      }
+
+      function loadDraftFromLocal() {
+        try {
+          const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+          if (!raw) return null;
+          return JSON.parse(raw);
+        } catch (err) {
+          return null;
+        }
+      }
+
+      function markDirty() {
+        isDirty = true;
+        saveDraftToLocal();
+        renderSessionStatusUI();
+      }
+
+      /* =====================================================================
+       * 5. STATISTIK-BERECHNUNG (UNABHÄNGIG FÜR JEDE SESSION NUTZBAR)
+       * ===================================================================== */
+      function getShotValueForMode(token, mode, ipscFactor) {
+        if (!token) return null;
+        if (mode === 'ipsc') {
+          const table = IPSC_POINTS[ipscFactor] || IPSC_POINTS.minor;
+          return token in table ? table[token] : null;
+        }
+        if (token === 'X') return 10;
+        const num = Number(token);
+        return Number.isFinite(num) && num >= 0 && num <= 10 ? num : null;
+      }
+
+      function getDisplayRow(row, targetState = state) {
+        if (!targetState.sortRoundHitsDesc) return [...row];
+        const weights = targetState.scoringMode === 'ipsc' ? IPSC_SORT_WEIGHT : RING_SORT_WEIGHT;
+        return [...row].sort((a, b) => (weights[b] || 0) - (weights[a] || 0));
+      }
+
+      function computeStatistics(targetState = state) {
+        const rounds = getCurrentRounds(targetState);
+        const mode = targetState.scoringMode || 'rings';
+        const factor = targetState.ipscFactor || 'minor';
+        const maxPerShot = mode === 'ipsc' ? 5 : 10;
+        const maxTotal = ROUNDS_COUNT * SHOTS_PER_ROUND * maxPerShot;
+
+        let totalScore = 0;
+        let totalShots = 0;
+        let xCount = 0;
+        let activeRoundsCount = 0;
+
+        const roundStats = rounds.map(row => {
+          let sum = 0;
+          let count = 0;
+          for (const token of row) {
+            const val = getShotValueForMode(token, mode, factor);
+            if (val !== null) {
+              sum += val;
+              count += 1;
+              if (token === 'X') xCount += 1;
+            }
+          }
+          if (count > 0) activeRoundsCount += 1;
+          totalScore += sum;
+          totalShots += count;
+          return { sum, count, isAboveAvg: false };
+        });
+
+        const avgPerSeriesExact = activeRoundsCount > 0 ? totalScore / activeRoundsCount : 0;
+        const avgPerShotExact = totalShots > 0 ? totalScore / totalShots : 0;
+
+        roundStats.forEach(rs => {
+          rs.isAboveAvg = rs.count > 0 && activeRoundsCount > 0 && rs.sum > avgPerSeriesExact;
+        });
+
+        return {
+          totalScore,
+          maxTotal,
+          totalShots,
+          xCount,
+          activeRoundsCount,
+          avgPerSeriesExact,
+          avgPerShotExact,
+          roundStats
+        };
+      }
+
+      function formatGermanDecimal(num) {
+        return Number(num || 0).toFixed(1).replace('.', ',');
+      }
+
+      function formatGermanDate(isoDate) {
+        if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return 'DATUM WÄHLEN';
+        const [y, m, d] = isoDate.split('-').map(Number);
+        const monthLabel = GERMAN_MONTHS[(m - 1 + 12) % 12] || 'JAN';
+        return `${String(d).padStart(2, '0')}. ${monthLabel} ${y}`;
+      }
+
+      function formatShortDate(isoDate) {
+        if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return '–';
+        const [y, m, d] = isoDate.split('-');
+        return `${d}.${m}.${y}`;
+      }
+
+      function formatDateTime(isoTs) {
+        if (!isoTs) return '–';
+        try {
+          const dt = new Date(isoTs);
+          return dt.toLocaleString('de-AT', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+          });
+        } catch {
+          return isoTs;
+        }
+      }
+
+      function getTileStyle(token, mode = state.scoringMode) {
+        if (!token) return null;
+        return mode === 'ipsc' ? (IPSC_TILE_STYLES[token] || null) : (RING_TILE_STYLES[token] || null);
+      }
+
+      function escapeHtml(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      /* =====================================================================
+       * 6. NATIVES HTML5 CANVAS RENDERING (EXAKT 1920 × 1080 PX)
+       * ===================================================================== */
+      const canvas = document.getElementById('previewCanvas');
+      const ctx = canvas.getContext('2d');
+
+      function roundedRectPath(c, x, y, w, h, r) {
+        const radius = Math.min(r, w / 2, h / 2);
+        c.beginPath();
+        c.moveTo(x + radius, y);
+        c.arcTo(x + w, y, x + w, y + h, radius);
+        c.arcTo(x + w, y + h, x, y + h, radius);
+        c.arcTo(x, y + h, x, y, radius);
+        c.arcTo(x, y, x + w, y, radius);
+        c.closePath();
+      }
+
+      function drawBackground(c, W, H) {
+        const bgGrad = c.createLinearGradient(0, 0, W, H);
+        bgGrad.addColorStop(0, '#12151a');
+        bgGrad.addColorStop(0.48, '#1c2028');
+        bgGrad.addColorStop(1, '#12151a');
+        c.fillStyle = bgGrad;
+        c.fillRect(0, 0, W, H);
+
+        const bokehCircles = [
+          { x: 1110, y: 118, r: 175, color: 'rgba(198, 132, 54, 0.11)' },
+          { x: 1330, y: 265, r: 245, color: 'rgba(92, 128, 175, 0.085)' },
+          { x: 755,  y: 215, r: 220, color: 'rgba(182, 118, 46, 0.075)' },
+          { x: 340,  y: 780, r: 310, color: 'rgba(72, 98, 134, 0.075)' },
+          { x: 1515, y: 845, r: 285, color: 'rgba(166, 110, 46, 0.065)' },
+          { x: 960,  y: 540, r: 370, color: 'rgba(110, 142, 184, 0.05)' },
+          { x: 1205, y: 74,  r: 44,  color: 'rgba(218, 152, 68, 0.13)' },
+          { x: 1168, y: 170, r: 34,  color: 'rgba(218, 152, 68, 0.11)' },
+          { x: 1392, y: 138, r: 56,  color: 'rgba(108, 150, 202, 0.10)' }
+        ];
+
+        for (const b of bokehCircles) {
+          const g = c.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+          g.addColorStop(0, b.color);
+          g.addColorStop(0.55, b.color.replace(/[\d.]+\)$/, '0.03)'));
+          g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          c.fillStyle = g;
+          c.beginPath();
+          c.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+          c.fill();
+        }
+
+        const vig = c.createRadialGradient(W * 0.5, H * 0.45, W * 0.25, W * 0.5, H * 0.5, W * 0.72);
+        vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        vig.addColorStop(1, 'rgba(0, 0, 0, 0.42)');
+        c.fillStyle = vig;
+        c.fillRect(0, 0, W, H);
+      }
+
+      function drawTargetWatermark(c, targetState) {
+        c.save();
+        const cx = 1715;
+        const cy = 128;
+
+        if (targetState.targetType === 'target') {
+          c.globalAlpha = 0.22;
+          const outerR = 305;
+          const discGrad = c.createRadialGradient(cx, cy, 40, cx, cy, outerR);
+          discGrad.addColorStop(0, '#6B727D');
+          discGrad.addColorStop(1, '#3A3F47');
+          c.fillStyle = discGrad;
+          c.beginPath();
+          c.arc(cx, cy, outerR, 0, Math.PI * 2);
+          c.fill();
+
+          c.fillStyle = '#0D0F12';
+          c.beginPath();
+          c.arc(cx, cy, 145, 0, Math.PI * 2);
+          c.fill();
+
+          const radii = [295, 252, 210, 168, 130, 96, 64, 34];
+          radii.forEach((r, idx) => {
+            c.beginPath();
+            c.arc(cx, cy, r, 0, Math.PI * 2);
+            c.strokeStyle = idx >= 4 ? 'rgba(220, 225, 232, 0.35)' : 'rgba(15, 17, 20, 0.65)';
+            c.lineWidth = idx === 3 ? 2.5 : 1.8;
+            c.stroke();
+          });
+
+          c.font = '600 22px "Barlow Condensed", sans-serif';
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          c.fillStyle = 'rgba(10, 12, 15, 0.78)';
+          c.fillText('5', cx - 231, cy + 12);
+          c.fillText('6', cx - 189, cy + 12);
+          c.fillText('7', cx - 150, cy + 12);
+          c.fillText('7', cx + 188, cy + 12);
+          c.fillText('6', cx, cy + 280);
+          c.fillText('7', cx, cy - 150);
+
+        } else if (targetState.targetType === 'wild') {
+          c.globalAlpha = 0.17;
+          c.translate(cx - 210, cy - 115);
+          c.scale(2.55, 2.55);
+
+          c.fillStyle = '#9EA6B2';
+          c.beginPath();
+          c.moveTo(46, 22); c.lineTo(39, 6); c.lineTo(44, 15); c.lineTo(50, 7);
+          c.lineTo(49, 21); c.lineTo(56, 10); c.lineTo(54, 24); c.lineTo(32, 34);
+          c.lineTo(24, 41); c.lineTo(28, 46); c.lineTo(40, 46); c.lineTo(49, 64);
+          c.lineTo(46, 86); c.lineTo(55, 118); c.lineTo(62, 118); c.lineTo(60, 92);
+          c.lineTo(69, 92); c.lineTo(74, 118); c.lineTo(81, 118); c.lineTo(79, 90);
+          c.lineTo(126, 90); c.lineTo(132, 118); c.lineTo(139, 118); c.lineTo(139, 86);
+          c.lineTo(150, 118); c.lineTo(157, 118); c.lineTo(154, 72);
+          c.quadraticCurveTo(154, 52, 134, 50);
+          c.lineTo(74, 50); c.lineTo(58, 28);
+          c.closePath();
+          c.fill();
+
+          const kx = 86;
+          const ky = 70;
+          [26, 19, 12, 6].forEach((r, i) => {
+            c.beginPath();
+            c.arc(kx, ky, r, 0, Math.PI * 2);
+            c.strokeStyle = i === 3 ? 'rgba(255,255,255,0.65)' : 'rgba(18,20,24,0.75)';
+            c.lineWidth = 1.1;
+            c.stroke();
+          });
+
+        } else if (targetState.targetType === 'ipsc') {
+          c.globalAlpha = 0.18;
+          c.translate(cx - 175, cy - 115);
+          c.scale(1.15, 1.15);
+
+          c.fillStyle = '#8C8272';
+          c.beginPath();
+          c.moveTo(105, 0); c.lineTo(205, 0); c.lineTo(205, 58); c.lineTo(310, 118);
+          c.lineTo(310, 295); c.lineTo(235, 380); c.lineTo(75, 380); c.lineTo(0, 295);
+          c.lineTo(0, 118); c.lineTo(105, 58);
+          c.closePath();
+          c.fill();
+
+          c.strokeStyle = 'rgba(240, 244, 250, 0.55)';
+          c.lineWidth = 2;
+          c.stroke();
+
+          c.setLineDash([7, 6]);
+          c.strokeStyle = 'rgba(15, 17, 20, 0.85)';
+          c.lineWidth = 2.2;
+          c.beginPath();
+          c.moveTo(122, 16); c.lineTo(188, 16); c.lineTo(188, 66); c.lineTo(255, 115);
+          c.lineTo(255, 272); c.lineTo(205, 326); c.lineTo(105, 326); c.lineTo(55, 272);
+          c.lineTo(55, 115); c.lineTo(122, 66);
+          c.closePath();
+          c.stroke();
+
+          c.strokeRect(112, 128, 86, 148);
+          c.strokeRect(134, 24, 42, 28);
+          c.setLineDash([]);
+
+          c.fillStyle = 'rgba(15, 17, 20, 0.7)';
+          c.font = '700 32px "Barlow Condensed", sans-serif';
+          c.textAlign = 'center';
+          c.fillText('A', 155, 210);
+          c.fillText('C', 225, 210);
+          c.fillText('D', 280, 210);
+        }
+
+        c.restore();
+      }
+
+      function drawWeaponIcon(c, rightX, topY, weaponIcon) {
+        c.save();
+        const goldGrad = c.createLinearGradient(0, topY, 0, topY + 66);
+        goldGrad.addColorStop(0, '#D2B589');
+        goldGrad.addColorStop(1, '#AE8D60');
+        c.fillStyle = goldGrad;
+
+        if (weaponIcon === 'pistol') {
+          const w = 104;
+          c.translate(rightX - w, topY + 3);
+          c.scale(0.95, 0.95);
+
+          c.beginPath();
+          c.moveTo(4, 5); c.lineTo(9, 5); c.lineTo(10, 2); c.lineTo(14, 2); c.lineTo(15, 5);
+          c.lineTo(84, 5); c.lineTo(86, 2); c.lineTo(92, 2); c.lineTo(94, 6); c.lineTo(100, 10);
+          c.lineTo(99, 15); c.lineTo(105, 19); c.lineTo(100, 24); c.lineTo(94, 26); c.lineTo(104, 62);
+          c.quadraticCurveTo(105, 67, 99, 67);
+          c.lineTo(79, 67);
+          c.quadraticCurveTo(75, 67, 74, 63);
+          c.lineTo(66, 36); c.lineTo(62, 35); c.lineTo(59, 41);
+          c.quadraticCurveTo(57, 45, 51, 45);
+          c.lineTo(39, 45);
+          c.quadraticCurveTo(34, 45, 33, 40);
+          c.lineTo(32, 30); c.lineTo(8, 30); c.lineTo(4, 26);
+          c.closePath();
+          c.fill();
+
+          c.fillStyle = '#15181E';
+          c.beginPath();
+          c.moveTo(39, 29); c.lineTo(58, 29); c.lineTo(55, 39); c.lineTo(40, 39);
+          c.closePath();
+          c.fill();
+
+          c.strokeStyle = '#C2A478';
+          c.lineWidth = 2.6;
+          c.beginPath();
+          c.moveTo(52, 29); c.quadraticCurveTo(49, 34, 52, 38);
+          c.stroke();
+
+          c.strokeStyle = 'rgba(20, 22, 26, 0.45)';
+          c.lineWidth = 1.6;
+          c.beginPath();
+          c.moveTo(6, 18); c.lineTo(95, 18);
+          c.stroke();
+
+        } else if (weaponIcon === 'ar') {
+          const w = 156;
+          c.translate(rightX - w, topY + 4);
+          c.scale(0.92, 0.92);
+
+          c.beginPath();
+          c.moveTo(0, 21); c.lineTo(14, 21); c.lineTo(14, 23); c.lineTo(26, 23); c.lineTo(26, 18);
+          c.lineTo(80, 18); c.lineTo(84, 18); c.lineTo(84, 11); c.lineTo(106, 11); c.lineTo(106, 18);
+          c.lineTo(126, 18); c.lineTo(128, 21); c.lineTo(166, 21); c.lineTo(166, 48); c.lineTo(156, 48);
+          c.lineTo(140, 35); c.lineTo(120, 35); c.lineTo(126, 56); c.lineTo(114, 58); c.lineTo(106, 39);
+          c.lineTo(94, 39); c.lineTo(91, 44); c.lineTo(84, 44); c.lineTo(80, 66); c.lineTo(68, 65);
+          c.lineTo(72, 36); c.lineTo(26, 33); c.lineTo(26, 29); c.lineTo(14, 29); c.lineTo(14, 31);
+          c.lineTo(0, 31);
+          c.closePath();
+          c.fill();
+
+          c.fillStyle = '#16191F';
+          for (let i = 0; i < 4; i++) c.fillRect(32 + i * 11, 23, 7, 3.5);
+
+        } else if (weaponIcon === 'precision') {
+          const w = 166;
+          c.translate(rightX - w, topY + 2);
+          c.scale(0.92, 0.92);
+
+          c.beginPath();
+          c.moveTo(0, 24); c.lineTo(13, 24); c.lineTo(13, 26); c.lineTo(54, 26); c.lineTo(58, 23);
+          c.lineTo(128, 23); c.lineTo(134, 20); c.lineTo(164, 20); c.lineTo(168, 24); c.lineTo(178, 24);
+          c.lineTo(178, 52); c.lineTo(166, 52); c.lineTo(162, 42); c.lineTo(138, 42); c.lineTo(132, 38);
+          c.lineTo(134, 58); c.lineTo(122, 58); c.lineTo(118, 41); c.lineTo(106, 41); c.lineTo(104, 53);
+          c.lineTo(90, 53); c.lineTo(90, 39); c.lineTo(44, 37); c.lineTo(34, 54); c.lineTo(28, 54);
+          c.lineTo(37, 37); c.lineTo(13, 33); c.lineTo(13, 35); c.lineTo(0, 35);
+          c.closePath();
+          c.fill();
+
+          c.beginPath();
+          c.moveTo(58, 7); c.lineTo(74, 7); c.lineTo(80, 10); c.lineTo(95, 10); c.lineTo(95, 6);
+          c.lineTo(102, 6); c.lineTo(102, 10); c.lineTo(114, 10); c.lineTo(120, 8); c.lineTo(132, 8);
+          c.lineTo(132, 17); c.lineTo(120, 17); c.lineTo(114, 15); c.lineTo(80, 15); c.lineTo(74, 18);
+          c.lineTo(58, 18);
+          c.closePath();
+          c.fill();
+
+          c.fillRect(82, 15, 5, 8);
+          c.fillRect(108, 15, 5, 8);
+
+          c.fillStyle = '#15181E';
+          c.fillRect(142, 30, 20, 8);
+        }
+
+        c.restore();
+      }
+
+      function drawTargetIcon(c, cx, cy, r, targetType) {
+        c.save();
+
+        if (targetType === 'target') {
+          c.fillStyle = '#C2A478';
+          c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill();
+
+          c.strokeStyle = 'rgba(42, 38, 35, 0.65)';
+          c.lineWidth = 1.4;
+          [0.88, 0.74, 0.60].forEach(f => {
+            c.beginPath(); c.arc(cx, cy, r * f, 0, Math.PI * 2); c.stroke();
+          });
+
+          c.fillStyle = '#2B2825';
+          c.beginPath(); c.arc(cx, cy, r * 0.50, 0, Math.PI * 2); c.fill();
+
+          c.strokeStyle = 'rgba(194, 164, 120, 0.72)';
+          c.lineWidth = 1.2;
+          [0.36, 0.22].forEach(f => {
+            c.beginPath(); c.arc(cx, cy, r * f, 0, Math.PI * 2); c.stroke();
+          });
+
+          c.fillStyle = '#E0CFAF';
+          c.beginPath(); c.arc(cx, cy, r * 0.08, 0, Math.PI * 2); c.fill();
+
+        } else if (targetType === 'wild') {
+          c.fillStyle = '#2B2825';
+          c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill();
+          c.strokeStyle = '#C2A478'; c.lineWidth = 3; c.stroke();
+
+          c.save();
+          c.translate(cx - r * 0.72, cy - r * 0.72);
+          const s = (r * 1.44) / 64;
+          c.scale(s, s);
+          c.fillStyle = '#C2A478';
+          c.beginPath();
+          c.moveTo(21, 20); c.lineTo(17, 10); c.lineTo(22, 16); c.lineTo(26, 9); c.lineTo(26, 19);
+          c.lineTo(14, 26); c.lineTo(14, 30); c.lineTo(21, 31); c.lineTo(25, 38); c.lineTo(24, 55);
+          c.lineTo(29, 55); c.lineTo(30, 44); c.lineTo(42, 44); c.lineTo(44, 55); c.lineTo(49, 55);
+          c.lineTo(49, 36); c.quadraticCurveTo(49, 28, 41, 28); c.lineTo(29, 28);
+          c.closePath();
+          c.fill();
+
+          c.strokeStyle = '#2B2825'; c.lineWidth = 1.6;
+          c.beginPath(); c.arc(34, 35, 4.5, 0, Math.PI * 2); c.stroke();
+          c.restore();
+
+        } else if (targetType === 'ipsc') {
+          c.save();
+          c.translate(cx - r * 0.88, cy - r * 0.98);
+          const w = r * 1.76;
+          const h = r * 1.96;
+
+          c.fillStyle = '#C2A478';
+          c.strokeStyle = '#2B2825';
+          c.lineWidth = 2.6;
+          c.beginPath();
+          c.moveTo(w * 0.34, 0); c.lineTo(w * 0.66, 0); c.lineTo(w * 0.66, h * 0.16);
+          c.lineTo(w, h * 0.32); c.lineTo(w, h * 0.78); c.lineTo(w * 0.75, h);
+          c.lineTo(w * 0.25, h); c.lineTo(0, h * 0.78); c.lineTo(0, h * 0.32);
+          c.lineTo(w * 0.34, h * 0.16);
+          c.closePath();
+          c.fill(); c.stroke();
+
+          c.strokeStyle = 'rgba(43, 40, 37, 0.75)';
+          c.lineWidth = 1.8;
+          c.setLineDash([4, 3]);
+          c.strokeRect(w * 0.34, h * 0.34, w * 0.32, h * 0.40);
+          c.setLineDash([]);
+          c.restore();
+        }
+
+        c.restore();
+      }
+
+      function drawHeader(c, targetState) {
+        const leftX = 60;
+        const rightX = 1860;
+
+        const targetRadius = 32;
+        const targetCx = rightX - targetRadius - 4;
+        const targetCy = 78;
+        drawTargetIcon(c, targetCx, targetCy, targetRadius, targetState.targetType);
+
+        const weaponRightX = targetCx - targetRadius - 24;
+        drawWeaponIcon(c, weaponRightX, 46, targetState.weaponIcon);
+
+        c.save();
+        c.font = '700 42px "Barlow Condensed", "Arial Narrow", sans-serif';
+        c.fillStyle = '#FFFFFF';
+        c.textAlign = 'right';
+        c.textBaseline = 'alphabetic';
+        c.fillText(formatGermanDate(targetState.date), rightX - 2, 160);
+        c.restore();
+
+        c.save();
+        const weaponTitle = `WAFFE: ${(targetState.weaponName || 'UNBENANNT').trim().toUpperCase()}`;
+        const maxTitleWidth = 1410;
+        let titleFontSize = 80;
+        c.font = `700 ${titleFontSize}px "Barlow Condensed", "Arial Narrow", sans-serif`;
+        while (c.measureText(weaponTitle).width > maxTitleWidth && titleFontSize > 44) {
+          titleFontSize -= 2;
+          c.font = `700 ${titleFontSize}px "Barlow Condensed", "Arial Narrow", sans-serif`;
+        }
+        c.fillStyle = '#FFFFFF';
+        c.textAlign = 'left';
+        c.textBaseline = 'alphabetic';
+        c.fillText(weaponTitle, leftX, 110);
+
+        const distText = `DISTANZ: ${(targetState.distance || '–').trim()}`;
+        c.font = '500 44px "Barlow Condensed", "Arial Narrow", sans-serif';
+        c.fillStyle = '#B89B72';
+        c.fillText(distText, leftX, 162);
+        c.restore();
+      }
+
+      function drawSummaryBox(c, stats, targetState) {
+        const x = 50, y = 192, w = 1820, h = 204, r = 22;
+
+        c.save();
+        c.shadowColor = 'rgba(0, 0, 0, 0.55)';
+        c.shadowBlur = 28;
+        c.shadowOffsetY = 12;
+
+        roundedRectPath(c, x, y, w, h, r);
+        const boxGrad = c.createLinearGradient(0, y, 0, y + h);
+        boxGrad.addColorStop(0, 'rgba(46, 51, 60, 0.78)');
+        boxGrad.addColorStop(1, 'rgba(22, 25, 30, 0.88)');
+        c.fillStyle = boxGrad;
+        c.fill();
+
+        c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0;
+        c.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+        c.lineWidth = 2;
+        c.stroke();
+
+        c.save();
+        roundedRectPath(c, x + 1, y + 1, w - 2, h - 2, r - 1);
+        c.clip();
+        const topHighlight = c.createLinearGradient(0, y, 0, y + 32);
+        topHighlight.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+        topHighlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        c.fillStyle = topHighlight;
+        c.fillRect(x, y, w, 32);
+
+        const tabTopW = 460, tabBotW = 396, tabH = 44, midX = x + w / 2;
+        c.beginPath();
+        c.moveTo(midX - tabTopW / 2, y);
+        c.lineTo(midX + tabTopW / 2, y);
+        c.lineTo(midX + tabBotW / 2, y + tabH);
+        c.lineTo(midX - tabBotW / 2, y + tabH);
+        c.closePath();
+
+        const tabGrad = c.createLinearGradient(0, y, 0, y + tabH);
+        tabGrad.addColorStop(0, 'rgba(92, 99, 110, 0.78)');
+        tabGrad.addColorStop(1, 'rgba(62, 67, 76, 0.72)');
+        c.fillStyle = tabGrad;
+        c.fill();
+        c.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+        c.lineWidth = 1.5;
+        c.stroke();
+        c.restore();
+
+        c.font = '700 32px "Barlow Condensed", "Arial Narrow", sans-serif';
+        c.fillStyle = '#FFFFFF';
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText('GESAMTSTATISTIK', x + w / 2, y + 24);
+
+        const colW = w / 4, valY = y + 122, lblY = y + 168;
+        const isIpsc = targetState.scoringMode === 'ipsc';
+
+        const c1X = x + colW * 0.5;
+        const scoreStr = String(stats.totalScore);
+        const maxStr = ` / ${stats.maxTotal}`;
+
+        c.textBaseline = 'alphabetic';
+        c.font = '700 84px "Barlow Condensed", "Arial Narrow", sans-serif';
+        const scoreW = c.measureText(scoreStr).width;
+        c.font = '500 54px "Barlow Condensed", "Arial Narrow", sans-serif';
+        const maxW = c.measureText(maxStr).width;
+        const combinedStartX = c1X - (scoreW + maxW) / 2;
+
+        c.textAlign = 'left';
+        c.font = '700 84px "Barlow Condensed", "Arial Narrow", sans-serif';
+        c.fillStyle = '#D8B46E';
+        c.fillText(scoreStr, combinedStartX, valY);
+
+        c.font = '500 54px "Barlow Condensed", "Arial Narrow", sans-serif';
+        c.fillStyle = '#8E9299';
+        c.fillText(maxStr, combinedStartX + scoreW, valY);
+
+        c.textAlign = 'center';
+        c.font = '600 32px "Barlow Condensed", "Arial Narrow", sans-serif';
+        c.fillStyle = '#C29B63';
+        const showXSuffix = !isIpsc && targetState.showXCount && stats.xCount > 0;
+        const col1Label = isIpsc ? 'GESAMTPUNKTE' : (showXSuffix ? `GESAMTRINGE  •  ${stats.xCount}× X` : 'GESAMTRINGE');
+        c.fillText(col1Label, c1X, lblY);
+
+        const c2X = x + colW * 1.5;
+        c.font = '700 84px "Barlow Condensed", "Arial Narrow", sans-serif';
+        c.fillStyle = '#FFFFFF';
+        c.fillText(String(stats.totalShots), c2X, valY);
+        c.font = '600 32px "Barlow Condensed", "Arial Narrow", sans-serif';
+        c.fillStyle = '#9A9FA6';
+        c.fillText('SCHÜSSE GESAMT', c2X, lblY);
+
+        const c3X = x + colW * 2.5;
+        c.font = '700 84px "Barlow Condensed", "Arial Narrow", sans-serif';
+        c.fillStyle = '#FFFFFF';
+        c.fillText(formatGermanDecimal(stats.avgPerSeriesExact), c3X, valY);
+        c.font = '600 32px "Barlow Condensed", "Arial Narrow", sans-serif';
+        c.fillStyle = '#9A9FA6';
+        c.fillText(isIpsc ? 'Ø PUNKTE / SERIE' : 'Ø RINGE / SERIE', c3X, lblY);
+
+        const c4X = x + colW * 3.5;
+        c.font = '700 84px "Barlow Condensed", "Arial Narrow", sans-serif';
+        c.fillStyle = '#FFFFFF';
+        c.fillText(formatGermanDecimal(stats.avgPerShotExact), c4X, valY);
+        c.font = '600 32px "Barlow Condensed", "Arial Narrow", sans-serif';
+        c.fillStyle = '#9A9FA6';
+        c.fillText(isIpsc ? 'Ø PUNKTE / SCHUSS' : 'Ø RINGE / SCHUSS', c4X, lblY);
+
+        c.restore();
+      }
+
+      function drawHitTile(c, x, y, w, h, token, mode) {
+        const radius = 14;
+        const style = getTileStyle(token, mode);
+
+        c.save();
+        if (!style) {
+          roundedRectPath(c, x, y, w, h, radius);
+          c.fillStyle = 'rgba(255, 255, 255, 0.03)';
+          c.fill();
+          c.setLineDash([5, 5]);
+          c.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+          c.lineWidth = 1.6;
+          c.stroke();
+          c.setLineDash([]);
+
+          c.font = '600 36px "Barlow Condensed", "Arial Narrow", sans-serif';
+          c.fillStyle = 'rgba(255, 255, 255, 0.22)';
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          c.fillText('–', x + w / 2, y + h / 2 + 1);
+          c.restore();
+          return;
+        }
+
+        c.shadowColor = 'rgba(0, 0, 0, 0.45)';
+        c.shadowBlur = 8;
+        c.shadowOffsetY = 3;
+
+        roundedRectPath(c, x, y, w, h, radius);
+        const grad = c.createLinearGradient(0, y, 0, y + h);
+        grad.addColorStop(0, style.top);
+        grad.addColorStop(1, style.bottom);
+        c.fillStyle = grad;
+        c.fill();
+
+        c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0;
+
+        c.save();
+        roundedRectPath(c, x + 1, y + 1, w - 2, h - 2, radius - 1);
+        c.clip();
+        const gloss = c.createLinearGradient(0, y, 0, y + h * 0.48);
+        gloss.addColorStop(0, 'rgba(255, 255, 255, 0.22)');
+        gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        c.fillStyle = gloss;
+        c.fillRect(x, y, w, h * 0.48);
+        c.restore();
+
+        roundedRectPath(c, x + 0.5, y + 0.5, w - 1, h - 1, radius);
+        c.strokeStyle = style.border;
+        c.lineWidth = 2;
+        c.stroke();
+
+        c.font = '700 46px "Barlow Condensed", "Arial Narrow", sans-serif';
+        c.fillStyle = style.text;
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText(token, x + w / 2, y + h / 2 + 2);
+        c.restore();
+      }
+
+      function drawRoundsGrid(c, stats, targetState) {
+        const rounds = getCurrentRounds(targetState);
+        const isIpsc = targetState.scoringMode === 'ipsc';
+        const unitLabel = isIpsc ? 'PKT' : 'RINGE';
+
+        const colXs = [50, 978];
+        const rowW = 892, rowH = 98, rowGap = 16, startY = 478;
+
+        for (let i = 0; i < ROUNDS_COUNT; i++) {
+          const col = i < 5 ? 0 : 1;
+          const rowIdx = i % 5;
+          const rx = colXs[col];
+          const ry = startY + rowIdx * (rowH + rowGap);
+          const rs = stats.roundStats[i];
+          const above = rs.isAboveAvg;
+          const displayRow = getDisplayRow(rounds[i], targetState);
+
+          c.save();
+          c.shadowColor = above ? 'rgba(56, 184, 106, 0.22)' : 'rgba(0, 0, 0, 0.40)';
+          c.shadowBlur = above ? 20 : 14;
+          c.shadowOffsetY = 5;
+
+          roundedRectPath(c, rx, ry, rowW, rowH, 18);
+          const bgGrad = c.createLinearGradient(0, ry, 0, ry + rowH);
+          if (above) {
+            bgGrad.addColorStop(0, 'rgba(28, 49, 36, 0.82)');
+            bgGrad.addColorStop(1, 'rgba(17, 29, 22, 0.88)');
+          } else {
+            bgGrad.addColorStop(0, 'rgba(28, 32, 39, 0.78)');
+            bgGrad.addColorStop(1, 'rgba(18, 21, 26, 0.86)');
+          }
+          c.fillStyle = bgGrad;
+          c.fill();
+
+          c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0;
+
+          if (above) {
+            c.fillStyle = 'rgba(56, 184, 106, 0.08)';
+            c.fill();
+          }
+
+          c.strokeStyle = above ? '#38B86A' : 'rgba(255, 255, 255, 0.18)';
+          c.lineWidth = above ? 2.5 : 1.8;
+          c.stroke();
+
+          const centerY = ry + rowH / 2;
+          const roundLabel = `RUNDE ${String(i + 1).padStart(2, '0')}`;
+          c.font = '500 41px "Barlow Condensed", "Arial Narrow", sans-serif';
+          c.fillStyle = '#F3F4F6';
+          c.textAlign = 'left';
+          c.textBaseline = 'middle';
+          c.fillText(roundLabel, rx + 24, centerY + 2);
+
+          const tileStartX = rx + 230, tileW = 70, tileH = 68, tileGap = 12;
+          const tileY = ry + (rowH - tileH) / 2;
+
+          for (let s = 0; s < SHOTS_PER_ROUND; s++) {
+            const tx = tileStartX + s * (tileW + tileGap);
+            drawHitTile(c, tx, tileY, tileW, tileH, displayRow[s], targetState.scoringMode);
+          }
+
+          const iconX = rx + 656;
+          if (above) {
+            c.fillStyle = '#38B86A';
+            c.beginPath();
+            c.moveTo(iconX + 15, centerY - 12);
+            c.lineTo(iconX + 30, centerY + 11);
+            c.lineTo(iconX, centerY + 11);
+            c.closePath();
+            c.fill();
+          } else {
+            c.strokeStyle = '#9EA4AC';
+            c.lineWidth = 4.2;
+            c.lineCap = 'round';
+            c.lineJoin = 'round';
+            c.beginPath();
+            c.moveTo(iconX + 2, centerY); c.lineTo(iconX + 24, centerY);
+            c.stroke();
+            c.beginPath();
+            c.moveTo(iconX + 16, centerY - 9); c.lineTo(iconX + 27, centerY); c.lineTo(iconX + 16, centerY + 9);
+            c.stroke();
+          }
+
+          const sumText = rs.count > 0 ? String(rs.sum) : '–';
+          c.textBaseline = 'middle';
+          c.textAlign = 'right';
+          c.font = '700 45px "Barlow Condensed", "Arial Narrow", sans-serif';
+          c.fillStyle = above ? '#38B86A' : '#C8CCD2';
+          c.fillText(sumText, rx + 754, centerY + 2);
+
+          c.textAlign = 'left';
+          c.font = '500 39px "Barlow Condensed", "Arial Narrow", sans-serif';
+          c.fillStyle = above ? '#38B86A' : '#DFE2E6';
+          c.fillText(unitLabel, rx + 764, centerY + 2);
+
+          c.restore();
+        }
+      }
+
+      function renderCanvasTo(targetCtx, targetState) {
+        const W = 1920, H = 1080;
+        const stats = computeStatistics(targetState);
+        targetCtx.clearRect(0, 0, W, H);
+        drawBackground(targetCtx, W, H);
+        drawTargetWatermark(targetCtx, targetState);
+        drawHeader(targetCtx, targetState);
+        drawSummaryBox(targetCtx, stats, targetState);
+        drawRoundsGrid(targetCtx, stats, targetState);
+        return stats;
+      }
+
+      function renderCanvas() {
+        const stats = renderCanvasTo(ctx, state);
+
+        document.getElementById('headerSummaryBadge').textContent = `${stats.totalScore} / ${stats.maxTotal}`;
+
+        const desktopHint = document.getElementById('desktopStatsHint');
+        const xText = state.scoringMode === 'rings' && stats.xCount > 0 ? ` • ${stats.xCount}× X` : '';
+        desktopHint.textContent = `Ø ${formatGermanDecimal(stats.avgPerSeriesExact)} / Serie${xText}`;
+
+        document.getElementById('quickBarWeapon').textContent = (state.weaponName || 'Unbenannt').trim();
+        const modeLabel = state.scoringMode === 'ipsc' ? `IPSC ${state.ipscFactor === 'major' ? 'Major' : 'Minor'}` : 'Ringe';
+        document.getElementById('quickBarMeta').textContent = `${state.distance || '–'} • ${formatGermanDate(state.date)} • ${modeLabel}`;
+
+        renderCanvasMetaSummary();
+      }
+
+      function renderCanvasMetaSummary() {
+        const box = document.getElementById('canvasMetaSummary');
+        const ammoEl = document.getElementById('metaSummaryAmmo');
+        const locEl = document.getElementById('metaSummaryLocation');
+        const notesEl = document.getElementById('metaSummaryNotes');
+
+        const hasAmmo = Boolean((state.ammo || '').trim());
+        const hasLoc = Boolean((state.location || '').trim());
+        const hasNotes = Boolean((state.notes || '').trim());
+
+        box.classList.toggle('hidden', !hasAmmo && !hasLoc && !hasNotes);
+        ammoEl.classList.toggle('hidden', !hasAmmo);
+        locEl.classList.toggle('hidden', !hasLoc);
+        notesEl.classList.toggle('hidden', !hasNotes);
+
+        if (hasAmmo) ammoEl.querySelector('span').textContent = state.ammo.trim();
+        if (hasLoc) locEl.querySelector('span').textContent = state.location.trim();
+        if (hasNotes) notesEl.textContent = state.notes.trim();
+      }
+
+      /* =====================================================================
+       * 7. TAGEBUCH-OPERATIONEN (SPEICHERN, LADEN, LÖSCHEN, MIGRATION)
+       * ===================================================================== */
+      function buildSessionPayload(forceNewId = false) {
+        const nowIso = new Date().toISOString();
+        const stats = computeStatistics(state);
+        const id = (!forceNewId && state.id) ? state.id : createId();
+        const createdAt = (!forceNewId && state.createdAt) ? state.createdAt : nowIso;
+
+        return {
+          id,
+          createdAt,
+          updatedAt: nowIso,
+          weaponName: (state.weaponName || 'Unbenannt').trim(),
+          distance: (state.distance || '–').trim(),
+          date: state.date || getTodayIso(),
+          weaponIcon: state.weaponIcon || 'pistol',
+          targetType: state.targetType || 'target',
+          scoringMode: state.scoringMode || 'rings',
+          ipscFactor: state.ipscFactor || 'minor',
+          sortRoundHitsDesc: Boolean(state.sortRoundHitsDesc),
+          showXCount: Boolean(state.showXCount),
+          ringRounds: state.ringRounds.map(r => [...r]),
+          ipscRounds: state.ipscRounds.map(r => [...r]),
+          ammo: (state.ammo || '').trim(),
+          location: (state.location || '').trim(),
+          position: (state.position || '').trim(),
+          notes: (state.notes || '').trim(),
+          summary: {
+            totalScore: stats.totalScore,
+            maxTotal: stats.maxTotal,
+            totalShots: stats.totalShots,
+            xCount: stats.xCount,
+            avgSeries: Number(stats.avgPerSeriesExact.toFixed(2)),
+            avgShot: Number(stats.avgPerShotExact.toFixed(2))
+          }
+        };
+      }
+
+      async function refreshSessionsFromDb() {
+        sessions = await dbGetAllSessions();
+        sessions.sort((a, b) => {
+          const d = (b.date || '').localeCompare(a.date || '');
+          if (d !== 0) return d;
+          return (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || '');
+        });
+        updateGlobalCounters();
+        renderQuickSessionSelect();
+        renderDatalists();
+        if (activeView === 'logbook') renderLogbookView();
+        if (activeView === 'stats') renderStatsView();
+        if (activeView === 'backup') renderBackupView();
+      }
+
+      async function saveCurrentSession(asCopy = false) {
+        try {
+          const payload = buildSessionPayload(asCopy);
+          await dbPutSession(payload);
+          state.id = payload.id;
+          state.createdAt = payload.createdAt;
+          state.updatedAt = payload.updatedAt;
+          isDirty = false;
+          saveDraftToLocal();
+
+          await refreshSessionsFromDb();
+          renderSessionStatusUI();
+          renderDetailsUI();
+
+          if (backupFileHandle) {
+            await writeBackupToLinkedFile(true);
+          }
+
+          showToast(asCopy ? 'Als neuer Eintrag gespeichert' : 'Training im Tagebuch gespeichert');
+        } catch (err) {
+          console.error('Fehler beim Speichern:', err);
+          showToast('Speichern fehlgeschlagen.');
+        }
+      }
+
+      function guardUnsavedChanges(action) {
+        if (!isDirty) {
+          action();
+          return;
+        }
+        openConfirm(
+          'Ungespeicherte Änderungen',
+          'Das aktuelle Training enthält ungespeicherte Änderungen. Möchtest du diese verwerfen und fortfahren?',
+          () => {
+            isDirty = false;
+            action();
+          }
+        );
+      }
+
+      function loadSessionIntoEditor(id) {
+        const found = sessions.find(s => s.id === id);
+        if (!found) return;
+        guardUnsavedChanges(() => {
+          state = cloneSessionToEditor(found);
+          isDirty = false;
+          activeRound = 0;
+          activeShot = 0;
+          saveDraftToLocal();
+          switchView('editor');
+          renderAllEditorUI();
+          showToast(`Geladen: ${formatShortDate(found.date)} • ${found.weaponName}`);
+        });
+      }
+
+      function duplicateSessionAsTemplate(id) {
+        const found = sessions.find(s => s.id === id);
+        if (!found) return;
+        guardUnsavedChanges(() => {
+          state = createNewEditorState({
+            weaponName: found.weaponName,
+            distance: found.distance,
+            date: getTodayIso(),
+            weaponIcon: found.weaponIcon,
+            targetType: found.targetType,
+            scoringMode: found.scoringMode,
+            ipscFactor: found.ipscFactor,
+            sortRoundHitsDesc: found.sortRoundHitsDesc,
+            showXCount: found.showXCount,
+            ammo: found.ammo,
+            location: found.location,
+            position: found.position
+          });
+          isDirty = false;
+          activeRound = 0;
+          activeShot = 0;
+          saveDraftToLocal();
+          switchView('editor');
+          activeTab = 'hits';
+          renderTabsUI();
+          renderAllEditorUI();
+          showToast('Vorlage übernommen – bereit für neue Treffer');
+        });
+      }
+
+      function startNewSession() {
+        guardUnsavedChanges(() => {
+          // Waffe, Distanz & Modus als sinnvollen Ausgangspunkt behalten, Treffer & Notizen leeren
+          state = createNewEditorState({
+            weaponName: state.weaponName,
+            distance: state.distance,
+            date: getTodayIso(),
+            weaponIcon: state.weaponIcon,
+            targetType: state.targetType,
+            scoringMode: state.scoringMode,
+            ipscFactor: state.ipscFactor,
+            sortRoundHitsDesc: state.sortRoundHitsDesc,
+            showXCount: state.showXCount,
+            ammo: state.ammo,
+            location: state.location
+          });
+          isDirty = false;
+          activeRound = 0;
+          activeShot = 0;
+          saveDraftToLocal();
+          switchView('editor');
+          activeTab = 'hits';
+          renderTabsUI();
+          renderAllEditorUI();
+          showToast('Neues Training gestartet');
+        });
+      }
+
+      function confirmDeleteSession(id) {
+        const found = sessions.find(s => s.id === id);
+        if (!found) return;
+        openConfirm(
+          'Training löschen?',
+          `Möchtest du das Training vom ${formatShortDate(found.date)} (${found.weaponName}) unwiderruflich aus dem Tagebuch löschen?`,
+          async () => {
+            await dbDeleteSession(id);
+            if (state.id === id) {
+              state.id = null;
+              state.createdAt = null;
+              state.updatedAt = null;
+              isDirty = true;
+              saveDraftToLocal();
+            }
+            await refreshSessionsFromDb();
+            renderSessionStatusUI();
+            renderDetailsUI();
+            if (backupFileHandle) await writeBackupToLinkedFile(true);
+            showToast('Eintrag gelöscht');
+          }
+        );
+      }
+
+      async function migrateLegacyStorageIfNeeded() {
+        const migrated = await dbGetMeta('legacy_v2_migrated', false);
+        if (migrated) return;
+
+        try {
+          const raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+          if (raw) {
+            const legacy = JSON.parse(raw);
+            if (Array.isArray(legacy.customWeapons) && legacy.customWeapons.length > 0) {
+              customWeapons = legacy.customWeapons.filter(w => w && w.name);
+              await dbSetMeta('customWeapons', customWeapons);
+            }
+            const migratedState = cloneSessionToEditor(legacy);
+            const stats = computeStatistics(migratedState);
+            if (stats.totalShots > 0) {
+              const nowIso = new Date().toISOString();
+              const session = {
+                ...migratedState,
+                id: createId(),
+                createdAt: nowIso,
+                updatedAt: nowIso,
+                notes: 'Automatisch aus Vorversion übernommen.',
+                summary: {
+                  totalScore: stats.totalScore,
+                  maxTotal: stats.maxTotal,
+                  totalShots: stats.totalShots,
+                  xCount: stats.xCount,
+                  avgSeries: Number(stats.avgPerSeriesExact.toFixed(2)),
+                  avgShot: Number(stats.avgPerShotExact.toFixed(2))
+                }
+              };
+              await dbPutSession(session);
+            }
+          }
+        } catch (err) {
+          console.warn('Legacy-Migration übersprungen:', err);
+        }
+        await dbSetMeta('legacy_v2_migrated', true);
+      }
+
+      async function seedSampleSessions() {
+        const samples = [
+          {
+            date: '2026-10-12',
+            weaponName: 'CZ SHADOW 2 - 9×19',
+            distance: '15m',
+            weaponIcon: 'pistol',
+            targetType: 'target',
+            scoringMode: 'rings',
+            ammo: 'S&B 124gr FMJ',
+            location: 'Vereinsstand 15m',
+            position: 'Stehend frei beidhändig',
+            notes: 'Konstante Gruppen, ab Serie 8 leichte Ermüdung.',
+            ringRounds: [
+              ['10','9','9','8','8'], ['9','9','9','8','8'], ['10','9','8','8','7'],
+              ['10','10','9','8','8'], ['9','9','9','8','7'], ['10','9','9','9','8'],
+              ['9','8','8','8','7'], ['10','9','9','8','7'], ['9','9','8','8','7'],
+              ['9','8','8','7','7']
+            ]
+          },
+          {
+            date: '2026-11-02',
+            weaponName: 'CZ SHADOW 2 - 9×19',
+            distance: '15m',
+            weaponIcon: 'pistol',
+            targetType: 'target',
+            scoringMode: 'rings',
+            ammo: 'Geco 124gr FMJ',
+            location: 'Vereinsstand 15m',
+            position: 'Stehend frei beidhändig',
+            notes: 'Besserer Nachzug, weniger Ausreißer nach links unten.',
+            ringRounds: [
+              ['10','10','9','8','8'], ['10','9','9','9','8'], ['9','9','9','8','8'],
+              ['10','10','9','9','8'], ['10','9','9','8','8'], ['9','9','8','8','8'],
+              ['10','10','9','9','7'], ['9','9','9','8','7'], ['10','9','9','9','8'],
+              ['10','9','8','8','8']
+            ]
+          },
+          {
+            date: '2026-11-25',
+            weaponName: 'CZ SHADOW 2 - 9×19',
+            distance: '15m',
+            weaponIcon: 'pistol',
+            targetType: 'target',
+            scoringMode: 'rings',
+            ammo: 'S&B 124gr FMJ',
+            location: 'Vereinsstand 15m',
+            position: 'Stehend frei beidhändig',
+            notes: 'Sehr starke Serie 4 (49 Ringe).',
+            ringRounds: [
+              ['10','10','9','9','8'], ['9','9','9','9','7'], ['9','9','8','8','7'],
+              ['10','10','10','10','9'], ['10','10','9','9','9'], ['10','10','9','8','7'],
+              ['10','10','9','9','7'], ['9','9','8','7','7'], ['10','9','9','8','8'],
+              ['10','9','8','8','7']
+            ]
+          },
+          {
+            date: '2026-11-18',
+            weaponName: 'Steyr Arms RMS - .308',
+            distance: '100m',
+            weaponIcon: 'precision',
+            targetType: 'target',
+            scoringMode: 'rings',
+            ammo: 'GGG 168gr Sierra MatchKing',
+            location: '100m Bahn 2',
+            position: 'Liegend Zweibein + Sandsack',
+            notes: 'ZF auf 12x, +0.1 MIL Korrektur nach Serie 2.',
+            ringRounds: [
+              ['X','10','10','9','9'], ['10','10','10','9','9'], ['X','X','10','10','9'],
+              ['X','10','10','10','9'], ['10','10','9','9','9'], ['X','10','10','10','10'],
+              ['X','10','10','9','9'], ['10','10','10','9','9'], ['X','X','10','9','9'],
+              ['X','10','10','10','9']
+            ]
+          }
+        ];
+
+        const nowIso = new Date().toISOString();
+        for (const s of samples) {
+          const st = createNewEditorState(s);
+          const stats = computeStatistics(st);
+          await dbPutSession({
+            ...st,
+            id: createId(),
+            createdAt: nowIso,
+            updatedAt: nowIso,
+            summary: {
+              totalScore: stats.totalScore,
+              maxTotal: stats.maxTotal,
+              totalShots: stats.totalShots,
+              xCount: stats.xCount,
+              avgSeries: Number(stats.avgPerSeriesExact.toFixed(2)),
+              avgShot: Number(stats.avgPerShotExact.toFixed(2))
+            }
+          });
+        }
+        await refreshSessionsFromDb();
+        showToast('4 Beispiel-Trainings im Tagebuch angelegt');
+      }
+
+      /* =====================================================================
+       * 8. UI-RENDERING: NAVIGATION, STATUS & EDITOR
+       * ===================================================================== */
+      function switchView(viewName) {
+        activeView = viewName;
+        ['editor', 'logbook', 'stats', 'backup'].forEach(v => {
+          const cap = v.charAt(0).toUpperCase() + v.slice(1);
+          document.getElementById('view' + cap).classList.toggle('hidden', v !== activeView);
+          const btn = document.getElementById('navBtn' + cap);
+          btn.className = [
+            'nav-main-btn py-2.5 px-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 touch-manipulation',
+            v === activeView
+              ? 'bg-tactical-800 text-gold-400 shadow-sm border border-white/10'
+              : 'text-slate-400 hover:text-slate-200'
+          ].join(' ');
+        });
+
+        if (activeView === 'logbook') renderLogbookView();
+        if (activeView === 'stats') renderStatsView();
+        if (activeView === 'backup') renderBackupView();
+      }
+
+      function updateGlobalCounters() {
+        const count = sessions.length;
+        const totalShots = sessions.reduce((acc, s) => acc + (s.summary ? s.summary.totalShots : computeStatistics(cloneSessionToEditor(s)).totalShots), 0);
+        document.getElementById('headerDbStatus').textContent = `IndexedDB • ${count} ${count === 1 ? 'Eintrag' : 'Einträge'} • ${totalShots} Schüsse`;
+        document.getElementById('navBadgeCount').textContent = String(count);
+      }
+
+      function renderSessionStatusUI() {
+        const pill = document.getElementById('sessionStatusPill');
+        const dot = document.getElementById('sessionStatusDot');
+        const text = document.getElementById('sessionStatusText');
+        const saveLabel = document.getElementById('btnSaveSessionLabel');
+        const btnCopy = document.getElementById('btnSaveAsCopy');
+        const btnDel = document.getElementById('btnDeleteCurrentSession');
+
+        if (state.id) {
+          btnCopy.classList.remove('hidden');
+          btnDel.classList.remove('hidden');
+          if (isDirty) {
+            pill.className = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border shrink-0 bg-amber-500/15 border-amber-500/40 text-amber-300';
+            dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+            text.textContent = `Geändert (${formatShortDate(state.date)})`;
+            saveLabel.textContent = 'Änderungen speichern';
+          } else {
+            pill.className = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border shrink-0 bg-emerald-500/15 border-emerald-500/35 text-emerald-300';
+            dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+            text.textContent = `Gespeichert (${formatShortDate(state.date)})`;
+            saveLabel.textContent = 'Aktualisieren';
+          }
+        } else {
+          btnCopy.classList.add('hidden');
+          btnDel.classList.add('hidden');
+          if (isDirty) {
+            pill.className = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border shrink-0 bg-amber-500/15 border-amber-500/40 text-amber-300';
+            dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+            text.textContent = 'Ungespeicherter Entwurf';
+          } else {
+            pill.className = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border shrink-0 bg-gold-500/15 border-gold-500/35 text-gold-300';
+            dot.className = 'w-2 h-2 rounded-full bg-gold-400';
+            text.textContent = 'Neues Training';
+          }
+          saveLabel.textContent = 'Im Tagebuch speichern';
+        }
+
+        const quickSel = document.getElementById('quickSessionSelect');
+        if (quickSel) quickSel.value = state.id || '';
+      }
+
+      function renderQuickSessionSelect() {
+        const sel = document.getElementById('quickSessionSelect');
+        sel.innerHTML = '';
+
+        const defOpt = document.createElement('option');
+        defOpt.value = '';
+        defOpt.textContent = sessions.length > 0
+          ? `— Gespeichertes Ergebnis wählen (${sessions.length}) —`
+          : '— Noch keine gespeicherten Ergebnisse —';
+        sel.appendChild(defOpt);
+
+        sessions.forEach(s => {
+          const st = s.summary || computeStatistics(cloneSessionToEditor(s));
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          const unit = s.scoringMode === 'ipsc' ? 'Pkt' : 'Ringe';
+          opt.textContent = `${formatShortDate(s.date)} • ${s.weaponName} (${s.distance}) — ${st.totalScore}/${st.maxTotal} ${unit}`;
+          sel.appendChild(opt);
+        });
+
+        sel.value = state.id || '';
+      }
+
+      function renderDatalists() {
+        const ammoSet = new Set();
+        const locSet = new Set();
+        sessions.forEach(s => {
+          if (s.ammo && s.ammo.trim()) ammoSet.add(s.ammo.trim());
+          if (s.location && s.location.trim()) locSet.add(s.location.trim());
+        });
+
+        const ammoDl = document.getElementById('ammoDatalist');
+        ammoDl.innerHTML = '';
+        [...ammoSet].sort().forEach(v => {
+          const o = document.createElement('option'); o.value = v; ammoDl.appendChild(o);
+        });
+
+        const locDl = document.getElementById('locationDatalist');
+        locDl.innerHTML = '';
+        [...locSet].sort().forEach(v => {
+          const o = document.createElement('option'); o.value = v; locDl.appendChild(o);
+        });
+      }
+
+      function renderTabsUI() {
+        const tabs = [
+          { key: 'hits', btn: 'tabBtnHits', panel: 'panelHits' },
+          { key: 'setup', btn: 'tabBtnSetup', panel: 'panelSetup' },
+          { key: 'details', btn: 'tabBtnDetails', panel: 'panelDetails' }
+        ];
+        tabs.forEach(t => {
+          const active = activeTab === t.key;
+          document.getElementById(t.panel).classList.toggle('hidden', !active);
+          document.getElementById(t.btn).className = [
+            'py-2.5 px-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 touch-manipulation',
+            active ? 'bg-tactical-800 text-gold-400 shadow-sm border border-white/10' : 'text-slate-400 hover:text-slate-200'
+          ].join(' ');
+        });
+      }
+
+      function selectWeaponPreset(name, icon) {
+        state.weaponName = name;
+        if (icon) state.weaponIcon = icon;
+        document.getElementById('inputWeaponName').value = name;
+        markDirty();
+        renderAllEditorUI();
+      }
+
+      function renderWeaponPresetsUI() {
+        const select = document.getElementById('selectWeaponPreset');
+        select.innerHTML = '';
+
+        const currentTrim = (state.weaponName || '').trim();
+        let matchedValue = '__custom__';
+
+        const customOpt = document.createElement('option');
+        customOpt.value = '__custom__';
+        customOpt.textContent = '— Waffe aus Standard-Liste wählen —';
+        select.appendChild(customOpt);
+
+        STANDARD_WEAPON_CATEGORIES.forEach(cat => {
+          const og = document.createElement('optgroup');
+          og.label = cat.label;
+          cat.weapons.forEach(wName => {
+            const opt = document.createElement('option');
+            const val = JSON.stringify({ name: wName, icon: cat.icon });
+            opt.value = val;
+            opt.textContent = wName;
+            if (wName.toLowerCase() === currentTrim.toLowerCase()) matchedValue = val;
+            og.appendChild(opt);
+          });
+          select.appendChild(og);
+        });
+
+        if (customWeapons.length > 0) {
+          const ogCustom = document.createElement('optgroup');
+          ogCustom.label = 'Eigene Waffen';
+          customWeapons.forEach(cw => {
+            const opt = document.createElement('option');
+            const val = JSON.stringify({ name: cw.name, icon: cw.icon || 'pistol' });
+            opt.value = val;
+            opt.textContent = cw.name;
+            if (cw.name.toLowerCase() === currentTrim.toLowerCase()) matchedValue = val;
+            ogCustom.appendChild(opt);
+          });
+          select.appendChild(ogCustom);
+        }
+        select.value = matchedValue;
+
+        const wrap = document.getElementById('presetChipsContainer');
+        wrap.innerHTML = '';
+
+        STANDARD_WEAPON_CATEGORIES.forEach(cat => {
+          const group = document.createElement('div');
+          group.className = 'space-y-1.5';
+          const heading = document.createElement('div');
+          heading.className = 'text-[11px] font-bold uppercase tracking-wider text-slate-400';
+          heading.textContent = cat.label;
+          group.appendChild(heading);
+
+          const chipsRow = document.createElement('div');
+          chipsRow.className = 'flex flex-wrap gap-1.5';
+          cat.weapons.forEach(wName => {
+            const isActive = wName.toLowerCase() === currentTrim.toLowerCase();
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = [
+              'px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition active:scale-95 touch-manipulation',
+              isActive
+                ? 'bg-gold-500/20 border-gold-400 text-gold-300 shadow-sm shadow-gold-500/10'
+                : 'bg-tactical-850 hover:bg-tactical-800 border-white/10 text-slate-200'
+            ].join(' ');
+            btn.textContent = wName;
+            btn.addEventListener('click', () => {
+              selectWeaponPreset(wName, cat.icon);
+              showToast(`${wName} gewählt`);
+            });
+            chipsRow.appendChild(btn);
+          });
+          group.appendChild(chipsRow);
+          wrap.appendChild(group);
+        });
+
+        if (customWeapons.length > 0) {
+          const group = document.createElement('div');
+          group.className = 'space-y-1.5 pt-1';
+          const heading = document.createElement('div');
+          heading.className = 'text-[11px] font-bold uppercase tracking-wider text-gold-400/80';
+          heading.textContent = 'Eigene Waffen';
+          group.appendChild(heading);
+
+          const chipsRow = document.createElement('div');
+          chipsRow.className = 'flex flex-wrap gap-1.5';
+          customWeapons.forEach(cw => {
+            const isActive = cw.name.toLowerCase() === currentTrim.toLowerCase();
+            const chip = document.createElement('div');
+            chip.className = [
+              'inline-flex items-center rounded-xl border text-xs font-semibold overflow-hidden',
+              isActive ? 'bg-gold-500/20 border-gold-400 text-gold-300' : 'bg-tactical-850 border-white/10 text-slate-200'
+            ].join(' ');
+
+            const btnSelect = document.createElement('button');
+            btnSelect.type = 'button';
+            btnSelect.className = 'px-2.5 py-1.5 hover:bg-white/5 transition touch-manipulation';
+            btnSelect.textContent = cw.name;
+            btnSelect.addEventListener('click', () => selectWeaponPreset(cw.name, cw.icon || state.weaponIcon));
+
+            const btnRemove = document.createElement('button');
+            btnRemove.type = 'button';
+            btnRemove.className = 'px-2 py-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/15 transition touch-manipulation';
+            btnRemove.title = 'Eigene Waffe entfernen';
+            btnRemove.textContent = '×';
+            btnRemove.addEventListener('click', async () => {
+              customWeapons = customWeapons.filter(item => item.name !== cw.name);
+              await dbSetMeta('customWeapons', customWeapons);
+              renderWeaponPresetsUI();
+              showToast('Eigene Waffe entfernt');
+            });
+
+            chip.appendChild(btnSelect);
+            chip.appendChild(btnRemove);
+            chipsRow.appendChild(chip);
+          });
+          group.appendChild(chipsRow);
+          wrap.appendChild(group);
+        }
+      }
+
+      function renderRoundsUI() {
+        const container = document.getElementById('roundsList');
+        const rounds = getCurrentRounds();
+        const stats = computeStatistics();
+        container.innerHTML = '';
+
+        for (let r = 0; r < ROUNDS_COUNT; r++) {
+          const rs = stats.roundStats[r];
+          const isCurrentRound = r === activeRound;
+
+          const row = document.createElement('div');
+          row.id = `uiRoundRow_${r}`;
+          row.className = [
+            'flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl border transition',
+            rs.isAboveAvg
+              ? 'bg-emerald-500/[0.08] border-emerald-500/45'
+              : isCurrentRound
+                ? 'bg-tactical-850 border-gold-500/40'
+                : 'bg-tactical-900 border-white/10'
+          ].join(' ');
+
+          const lbl = document.createElement('button');
+          lbl.type = 'button';
+          lbl.className = 'text-xs font-bold font-condensed tracking-wide w-8 text-left shrink-0 ' +
+            (isCurrentRound ? 'text-gold-400' : 'text-slate-400');
+          lbl.textContent = `R${String(r + 1).padStart(2, '0')}`;
+          lbl.addEventListener('click', () => selectSlot(r, 0));
+          row.appendChild(lbl);
+
+          const slotsWrap = document.createElement('div');
+          slotsWrap.className = 'grid grid-cols-5 gap-1.5 flex-1';
+
+          for (let s = 0; s < SHOTS_PER_ROUND; s++) {
+            const token = rounds[r][s];
+            const style = getTileStyle(token);
+            const isSelected = r === activeRound && s === activeShot;
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = [
+              'h-9 sm:h-10 rounded-lg font-condensed font-bold text-base sm:text-lg flex items-center justify-center transition active:scale-95 touch-manipulation select-none',
+              isSelected ? 'ring-2 ring-gold-400 ring-offset-2 ring-offset-tactical-900 scale-[1.04] z-10' : ''
+            ].join(' ');
+
+            if (style) {
+              btn.style.background = `linear-gradient(180deg, ${style.top}, ${style.bottom})`;
+              btn.style.color = style.text;
+              btn.style.border = `1px solid ${style.border}`;
+              btn.textContent = token;
+            } else {
+              btn.className += ' bg-tactical-950/90 border border-dashed border-white/15 text-slate-600';
+              btn.textContent = '–';
+            }
+
+            btn.addEventListener('click', () => selectSlot(r, s));
+            slotsWrap.appendChild(btn);
+          }
+          row.appendChild(slotsWrap);
+
+          const sumEl = document.createElement('div');
+          sumEl.className = 'w-11 text-right font-condensed font-bold text-base shrink-0 ' +
+            (rs.isAboveAvg ? 'text-emerald-400' : 'text-slate-300');
+          sumEl.textContent = rs.count > 0 ? `${rs.isAboveAvg ? '▲' : ''}${rs.sum}` : '–';
+          row.appendChild(sumEl);
+
+          container.appendChild(row);
+        }
+
+        document.getElementById('activeSlotLabel').textContent =
+          `Runde ${String(activeRound + 1).padStart(2, '0')} • Schuss ${activeShot + 1} / 5`;
+      }
+
+      function renderKeypadUI() {
+        const grid = document.getElementById('keypadGrid');
+        grid.innerHTML = '';
+
+        if (state.scoringMode === 'ipsc') {
+          grid.className = 'grid grid-cols-4 gap-2';
+          const pts = IPSC_POINTS[state.ipscFactor] || IPSC_POINTS.minor;
+          [
+            { token: 'A', sub: `${pts.A} Pkt.` },
+            { token: 'C', sub: `${pts.C} Pkt.` },
+            { token: 'D', sub: `${pts.D} Pkt.` },
+            { token: 'M', sub: `${pts.M} Pkt.` }
+          ].forEach(k => {
+            const st = IPSC_TILE_STYLES[k.token];
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'py-3 rounded-xl font-condensed flex flex-col items-center justify-center shadow-md transition active:scale-95 touch-manipulation select-none';
+            btn.style.background = `linear-gradient(180deg, ${st.top}, ${st.bottom})`;
+            btn.style.color = st.text;
+            btn.style.border = `1.5px solid ${st.border}`;
+            btn.innerHTML = `<span class="text-2xl font-bold leading-none">${k.token}</span><span class="text-[11px] font-sans font-semibold opacity-80 mt-0.5">${k.sub}</span>`;
+            btn.addEventListener('click', () => handleHitInput(k.token));
+            grid.appendChild(btn);
+          });
+        } else {
+          grid.className = 'grid grid-cols-6 gap-1.5 sm:gap-2';
+          ['X', '10', '9', '8', '7', '6', '5', '4', '3', '2', '1', '0'].forEach(token => {
+            const st = RING_TILE_STYLES[token];
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'h-12 rounded-xl font-condensed font-bold text-xl sm:text-2xl flex items-center justify-center shadow-md transition active:scale-95 touch-manipulation select-none';
+            btn.style.background = `linear-gradient(180deg, ${st.top}, ${st.bottom})`;
+            btn.style.color = st.text;
+            btn.style.border = `1.5px solid ${st.border}`;
+            btn.textContent = token;
+            btn.addEventListener('click', () => handleHitInput(token));
+            grid.appendChild(btn);
+          });
+        }
+      }
+
+      function renderSetupUI() {
+        const weaponInput = document.getElementById('inputWeaponName');
+        if (document.activeElement !== weaponInput) weaponInput.value = state.weaponName;
+
+        const distInput = document.getElementById('inputDistance');
+        if (document.activeElement !== distInput) distInput.value = state.distance;
+
+        const dateInput = document.getElementById('inputDate');
+        if (document.activeElement !== dateInput) dateInput.value = state.date;
+
+        renderWeaponPresetsUI();
+
+        document.querySelectorAll('.dist-chip').forEach(btn => {
+          const active = btn.dataset.dist === (state.distance || '').trim();
+          btn.className = [
+            'dist-chip py-2 rounded-xl border text-xs font-semibold transition active:scale-95 touch-manipulation',
+            active ? 'bg-gold-500/20 border-gold-400 text-gold-300' : 'bg-tactical-800 hover:bg-tactical-700 border-white/10 text-slate-200'
+          ].join(' ');
+        });
+
+        document.querySelectorAll('.weapon-icon-btn').forEach(btn => {
+          const active = btn.dataset.weaponIcon === state.weaponIcon;
+          btn.className = [
+            'weapon-icon-btn p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition active:scale-95 touch-manipulation',
+            active ? 'bg-gold-500/15 border-gold-400 text-gold-300 shadow-lg shadow-gold-500/10' : 'bg-tactical-950/70 border-white/10 text-slate-300 hover:bg-tactical-800'
+          ].join(' ');
+        });
+
+        document.querySelectorAll('.target-type-btn').forEach(btn => {
+          const active = btn.dataset.targetType === state.targetType;
+          btn.className = [
+            'target-type-btn p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition active:scale-95 touch-manipulation',
+            active ? 'bg-gold-500/15 border-gold-400 text-gold-300 shadow-lg shadow-gold-500/10' : 'bg-tactical-950/70 border-white/10 text-slate-300 hover:bg-tactical-800'
+          ].join(' ');
+        });
+
+        const isIpsc = state.scoringMode === 'ipsc';
+        document.getElementById('btnModeRings').className = [
+          'p-3 rounded-xl border text-left transition active:scale-95 touch-manipulation',
+          !isIpsc ? 'bg-gold-500/15 border-gold-400 text-white' : 'bg-tactical-950/70 border-white/10 text-slate-300 hover:bg-tactical-800'
+        ].join(' ');
+        document.getElementById('btnModeIpsc').className = [
+          'p-3 rounded-xl border text-left transition active:scale-95 touch-manipulation',
+          isIpsc ? 'bg-gold-500/15 border-gold-400 text-white' : 'bg-tactical-950/70 border-white/10 text-slate-300 hover:bg-tactical-800'
+        ].join(' ');
+
+        document.getElementById('quickModeRings').className = [
+          'px-2.5 py-1.5 rounded-xl text-xs font-semibold transition touch-manipulation',
+          !isIpsc ? 'bg-gold-500 text-slate-950' : 'bg-tactical-800 text-slate-300 hover:bg-tactical-700'
+        ].join(' ');
+        document.getElementById('quickModeIpsc').className = [
+          'px-2.5 py-1.5 rounded-xl text-xs font-semibold transition touch-manipulation',
+          isIpsc ? 'bg-gold-500 text-slate-950' : 'bg-tactical-800 text-slate-300 hover:bg-tactical-700'
+        ].join(' ');
+
+        document.getElementById('ipscFactorWrap').classList.toggle('hidden', !isIpsc);
+        document.getElementById('wrapToggleShowX').classList.toggle('hidden', isIpsc);
+
+        document.getElementById('btnFactorMinor').className = [
+          'py-2 px-3 rounded-xl border text-xs font-semibold transition active:scale-95 touch-manipulation',
+          state.ipscFactor === 'minor' ? 'bg-gold-500/20 border-gold-400 text-gold-300' : 'bg-tactical-950 border-white/10 text-slate-300'
+        ].join(' ');
+        document.getElementById('btnFactorMajor').className = [
+          'py-2 px-3 rounded-xl border text-xs font-semibold transition active:scale-95 touch-manipulation',
+          state.ipscFactor === 'major' ? 'bg-gold-500/20 border-gold-400 text-gold-300' : 'bg-tactical-950 border-white/10 text-slate-300'
+        ].join(' ');
+
+        document.getElementById('toggleSortDesc').checked = Boolean(state.sortRoundHitsDesc);
+        document.getElementById('toggleShowX').checked = Boolean(state.showXCount);
+      }
+
+      function renderDetailsUI() {
+        const ammoEl = document.getElementById('inputAmmo');
+        const locEl = document.getElementById('inputLocation');
+        const posEl = document.getElementById('inputPosition');
+        const notesEl = document.getElementById('inputNotes');
+
+        if (document.activeElement !== ammoEl) ammoEl.value = state.ammo || '';
+        if (document.activeElement !== locEl) locEl.value = state.location || '';
+        if (document.activeElement !== posEl) posEl.value = state.position || '';
+        if (document.activeElement !== notesEl) notesEl.value = state.notes || '';
+
+        const metaCard = document.getElementById('entryMetaCard');
+        if (state.id) {
+          metaCard.classList.remove('hidden');
+          document.getElementById('metaEntryId').textContent = state.id.slice(0, 12);
+          document.getElementById('metaEntryCreated').textContent = formatDateTime(state.createdAt);
+          document.getElementById('metaEntryUpdated').textContent = formatDateTime(state.updatedAt);
+        } else {
+          metaCard.classList.add('hidden');
+        }
+      }
+
+      function renderAllEditorUI() {
+        renderSessionStatusUI();
+        renderCanvas();
+        renderRoundsUI();
+        renderKeypadUI();
+        renderSetupUI();
+        renderDetailsUI();
+      }
+
+      /* =====================================================================
+       * 9. UI-RENDERING: TAGEBUCH / ARCHIV
+       * ===================================================================== */
+      function populateFilterDropdowns() {
+        const weapons = [...new Set(sessions.map(s => s.weaponName).filter(Boolean))].sort();
+        const distances = [...new Set(sessions.map(s => s.distance).filter(Boolean))].sort((a, b) => {
+          const na = parseFloat(a) || 9999, nb = parseFloat(b) || 9999;
+          return na - nb;
+        });
+
+        ['filterWeapon', 'statsFilterWeapon'].forEach(elId => {
+          const sel = document.getElementById(elId);
+          const prev = sel.value;
+          sel.innerHTML = '<option value="">Alle Waffen</option>';
+          weapons.forEach(w => {
+            const opt = document.createElement('option');
+            opt.value = w; opt.textContent = w;
+            sel.appendChild(opt);
+          });
+          sel.value = weapons.includes(prev) ? prev : '';
+        });
+
+        ['filterDistance', 'statsFilterDistance'].forEach(elId => {
+          const sel = document.getElementById(elId);
+          const prev = sel.value;
+          sel.innerHTML = '<option value="">Alle Distanzen</option>';
+          distances.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d; opt.textContent = d;
+            sel.appendChild(opt);
+          });
+          sel.value = distances.includes(prev) ? prev : '';
+        });
+      }
+
+      function renderLogbookView() {
+        populateFilterDropdowns();
+
+        const query = (document.getElementById('filterSearch').value || '').trim().toLowerCase();
+        const fWeapon = document.getElementById('filterWeapon').value;
+        const fDist = document.getElementById('filterDistance').value;
+        const fMode = document.getElementById('filterMode').value;
+        const fSort = document.getElementById('filterSort').value;
+
+        const hasActiveFilter = Boolean(query || fWeapon || fDist || fMode);
+        document.getElementById('btnResetFilters').classList.toggle('hidden', !hasActiveFilter);
+
+        let filtered = sessions.filter(s => {
+          if (fWeapon && s.weaponName !== fWeapon) return false;
+          if (fDist && s.distance !== fDist) return false;
+          if (fMode && s.scoringMode !== fMode) return false;
+          if (query) {
+            const hay = [s.weaponName, s.distance, s.ammo, s.location, s.position, s.notes, s.date, formatShortDate(s.date)]
+              .join(' ').toLowerCase();
+            if (!hay.includes(query)) return false;
+          }
+          return true;
+        });
+
+        filtered.sort((a, b) => {
+          const sa = a.summary || computeStatistics(cloneSessionToEditor(a));
+          const sb = b.summary || computeStatistics(cloneSessionToEditor(b));
+          if (fSort === 'date_asc') return (a.date || '').localeCompare(b.date || '');
+          if (fSort === 'score_desc') return (sb.totalScore || 0) - (sa.totalScore || 0);
+          if (fSort === 'avg_desc') return (sb.avgShot || 0) - (sa.avgShot || 0);
+          const d = (b.date || '').localeCompare(a.date || '');
+          return d !== 0 ? d : (b.updatedAt || '').localeCompare(a.updatedAt || '');
+        });
+
+        document.getElementById('logbookFilterSummary').textContent =
+          `${filtered.length} von ${sessions.length} ${sessions.length === 1 ? 'Eintrag' : 'Einträgen'} angezeigt`;
+
+        const listEl = document.getElementById('logbookList');
+        const emptyEl = document.getElementById('logbookEmptyState');
+        listEl.innerHTML = '';
+
+        if (filtered.length === 0) {
+          emptyEl.classList.remove('hidden');
+          return;
+        }
+        emptyEl.classList.add('hidden');
+
+        filtered.forEach(s => {
+          const st = s.summary || computeStatistics(cloneSessionToEditor(s));
+          const isCurrent = state.id === s.id;
+          const isIpsc = s.scoringMode === 'ipsc';
+          const unit = isIpsc ? 'Pkt' : 'Ringe';
+          const avgShot = st.avgShot !== undefined ? st.avgShot : (st.avgPerShotExact || 0);
+          const avgSeries = st.avgSeries !== undefined ? st.avgSeries : (st.avgPerSeriesExact || 0);
+
+          const card = document.createElement('div');
+          card.className = [
+            'rounded-2xl border p-3.5 sm:p-4 transition flex flex-col md:flex-row md:items-center justify-between gap-3',
+            isCurrent
+              ? 'bg-gold-500/[0.08] border-gold-400/50'
+              : 'bg-tactical-900 border-white/10 hover:border-white/20'
+          ].join(' ');
+
+          const metaBits = [];
+          if (s.ammo) metaBits.push(`<span class="text-slate-300">${escapeHtml(s.ammo)}</span>`);
+          if (s.location) metaBits.push(`<span>${escapeHtml(s.location)}</span>`);
+          if (s.position) metaBits.push(`<span>${escapeHtml(s.position)}</span>`);
+
+          card.innerHTML = `
+            <div class="flex items-start gap-3 min-w-0 flex-1 cursor-pointer log-open-trigger">
+              <div class="px-2.5 py-2 rounded-xl bg-tactical-950 border border-white/10 text-center shrink-0 min-w-[74px]">
+                <div class="text-xs font-bold text-gold-400">${formatShortDate(s.date).slice(0, 6)}</div>
+                <div class="text-[11px] font-semibold text-slate-400">${(s.date || '').slice(0, 4)}</div>
+              </div>
+
+              <div class="min-w-0 flex-1 space-y-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-sm sm:text-base font-bold text-white truncate">${escapeHtml(s.weaponName)}</span>
+                  <span class="px-2 py-0.5 rounded-md bg-tactical-800 border border-white/10 text-[11px] font-semibold text-gold-300">${escapeHtml(s.distance)}</span>
+                  <span class="px-2 py-0.5 rounded-md bg-white/5 text-[11px] font-medium text-slate-400">${isIpsc ? 'IPSC ' + (s.ipscFactor === 'major' ? 'Major' : 'Minor') : 'Ringe'}</span>
+                  ${isCurrent ? '<span class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-bold uppercase">Aktiv</span>' : ''}
+                </div>
+
+                ${metaBits.length > 0 ? `<div class="text-xs text-slate-400 flex flex-wrap gap-x-2.5 gap-y-0.5">${metaBits.join(' • ')}</div>` : ''}
+                ${s.notes ? `<p class="text-xs text-slate-400 line-clamp-1">${escapeHtml(s.notes)}</p>` : ''}
+              </div>
+            </div>
+
+            <div class="flex flex-wrap sm:flex-nowrap items-center justify-between md:justify-end gap-3 pt-2 md:pt-0 border-t md:border-t-0 border-white/10 shrink-0">
+              <div class="flex items-baseline gap-3">
+                <div class="text-right">
+                  <div class="font-condensed text-2xl font-bold leading-none text-gold-400">
+                    ${st.totalScore}<span class="text-sm font-medium text-slate-500"> / ${st.maxTotal}</span>
+                  </div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">
+                    Ø ${formatGermanDecimal(avgSeries)}/S • Ø ${formatGermanDecimal(avgShot)}/Sch.${!isIpsc && st.xCount > 0 ? ` • ${st.xCount}×X` : ''}
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5">
+                <button type="button" class="log-btn-open px-3 py-2 rounded-xl bg-gold-500/15 hover:bg-gold-500/25 border border-gold-500/35 text-xs font-bold text-gold-300 transition active:scale-95">Öffnen</button>
+                <button type="button" title="Grafik direkt als PNG exportieren" class="log-btn-png p-2 rounded-xl bg-tactical-800 hover:bg-tactical-700 border border-white/10 text-slate-200 transition active:scale-95" aria-label="PNG exportieren">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+                <button type="button" title="Als Vorlage für neues Training übernehmen" class="log-btn-dup p-2 rounded-xl bg-tactical-800 hover:bg-tactical-700 border border-white/10 text-slate-200 transition active:scale-95" aria-label="Als Vorlage nutzen">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                </button>
+                <button type="button" title="Löschen" class="log-btn-del p-2 rounded-xl bg-red-500/10 hover:bg-red-500/25 border border-red-500/25 text-red-300 transition active:scale-95" aria-label="Löschen">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          `;
+
+          card.querySelector('.log-open-trigger').addEventListener('click', () => loadSessionIntoEditor(s.id));
+          card.querySelector('.log-btn-open').addEventListener('click', () => loadSessionIntoEditor(s.id));
+          card.querySelector('.log-btn-png').addEventListener('click', () => exportSessionPngDirect(s));
+          card.querySelector('.log-btn-dup').addEventListener('click', () => duplicateSessionAsTemplate(s.id));
+          card.querySelector('.log-btn-del').addEventListener('click', () => confirmDeleteSession(s.id));
+
+          listEl.appendChild(card);
+        });
+      }
+
+      /* =====================================================================
+       * 10. UI-RENDERING: STATISTIK & VERLAUF
+       * ===================================================================== */
+      function renderStatsView() {
+        populateFilterDropdowns();
+
+        const fWeapon = document.getElementById('statsFilterWeapon').value;
+        const fDist = document.getElementById('statsFilterDistance').value;
+        const fMode = document.getElementById('statsFilterMode').value;
+
+        document.querySelectorAll('.chart-metric-btn').forEach(btn => {
+          const active = btn.dataset.metric === chartMetric;
+          btn.className = [
+            'chart-metric-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition',
+            active ? 'bg-gold-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'
+          ].join(' ');
+        });
+
+        const filtered = sessions
+          .filter(s => {
+            if (fWeapon && s.weaponName !== fWeapon) return false;
+            if (fDist && s.distance !== fDist) return false;
+            if (fMode && s.scoringMode !== fMode) return false;
+            return true;
+          })
+          .map(s => ({ session: s, stats: computeStatistics(cloneSessionToEditor(s)) }))
+          .sort((a, b) => (a.session.date || '').localeCompare(b.session.date || ''));
+
+        const count = filtered.length;
+        const totalShots = filtered.reduce((acc, item) => acc + item.stats.totalShots, 0);
+        const totalScoreSum = filtered.reduce((acc, item) => acc + item.stats.totalScore, 0);
+        const totalRoundsSum = filtered.reduce((acc, item) => acc + item.stats.activeRoundsCount, 0);
+        const totalX = filtered.reduce((acc, item) => acc + item.stats.xCount, 0);
+
+        document.getElementById('kpiSessions').textContent = String(count);
+        document.getElementById('kpiShots').textContent = String(totalShots);
+
+        const sameMode = fMode !== '' || (count > 0 && new Set(filtered.map(i => i.session.scoringMode)).size === 1);
+
+        if (count > 0 && sameMode) {
+          let bestItem = filtered[0];
+          filtered.forEach(item => {
+            if (item.stats.totalScore > bestItem.stats.totalScore) bestItem = item;
+          });
+          document.getElementById('kpiBest').textContent = `${bestItem.stats.totalScore} / ${bestItem.stats.maxTotal}`;
+          document.getElementById('kpiBestSub').textContent = `${formatShortDate(bestItem.session.date)} • ${bestItem.session.weaponName}`;
+
+          const avgSer = totalRoundsSum > 0 ? totalScoreSum / totalRoundsSum : 0;
+          const avgShot = totalShots > 0 ? totalScoreSum / totalShots : 0;
+          document.getElementById('kpiAvgSeries').textContent = formatGermanDecimal(avgSer);
+          document.getElementById('kpiAvgShot').textContent = formatGermanDecimal(avgShot);
+          document.getElementById('kpiXTotal').textContent = (filtered[0].session.scoringMode === 'rings' && totalX > 0) ? `${totalX}× Innenzehner (X)` : '';
+        } else {
+          document.getElementById('kpiBest').textContent = '–';
+          document.getElementById('kpiBestSub').textContent = count > 0 ? 'Modus für Vergleich wählen' : '';
+          document.getElementById('kpiAvgSeries').textContent = '–';
+          document.getElementById('kpiAvgShot').textContent = '–';
+          document.getElementById('kpiXTotal').textContent = '';
+        }
+
+        renderTrendChart(filtered, sameMode);
+        renderWeaponStatsTable();
+      }
+
+      function renderTrendChart(items, sameMode) {
+        const container = document.getElementById('trendChartContainer');
+        if (items.length === 0) {
+          container.innerHTML = '<div class="py-10 text-center text-xs text-slate-400">Keine Trainingsdaten für die aktuelle Filterauswahl vorhanden.</div>';
+          return;
+        }
+        if (!sameMode) {
+          container.innerHTML = '<div class="py-10 text-center text-xs text-slate-400">Bitte wähle oben einen Wertungsmodus (Ringe oder IPSC), um den Leistungsverlauf darzustellen.</div>';
+          return;
+        }
+
+        const W = Math.max(640, items.length * 76 + 90);
+        const H = 260;
+        const padL = 52, padR = 28, padT = 26, padB = 46;
+        const plotW = W - padL - padR;
+        const plotH = H - padT - padB;
+
+        const values = items.map(it =>
+          chartMetric === 'avgShot' ? it.stats.avgPerShotExact : it.stats.totalScore
+        );
+
+        let minV = Math.min(...values);
+        let maxV = Math.max(...values);
+        if (minV === maxV) {
+          minV = Math.max(0, minV - (chartMetric === 'avgShot' ? 1 : 20));
+          maxV = maxV + (chartMetric === 'avgShot' ? 1 : 20);
+        } else {
+          const margin = (maxV - minV) * 0.18;
+          minV = Math.max(0, minV - margin);
+          maxV = maxV + margin;
+        }
+
+        const xAt = (idx) => items.length === 1
+          ? padL + plotW / 2
+          : padL + (idx / (items.length - 1)) * plotW;
+        const yAt = (v) => padT + plotH - ((v - minV) / (maxV - minV)) * plotH;
+
+        const pts = items.map((it, idx) => ({
+          x: xAt(idx),
+          y: yAt(values[idx]),
+          val: values[idx],
+          item: it
+        }));
+
+        const gridLines = 4;
+        let gridSvg = '';
+        for (let g = 0; g <= gridLines; g++) {
+          const frac = g / gridLines;
+          const gv = minV + (maxV - minV) * (1 - frac);
+          const gy = padT + plotH * frac;
+          const label = chartMetric === 'avgShot' ? formatGermanDecimal(gv) : Math.round(gv);
+          gridSvg += `
+            <line x1="${padL}" y1="${gy}" x2="${W - padR}" y2="${gy}" stroke="rgba(255,255,255,0.08)" stroke-dasharray="4 4"/>
+            <text x="${padL - 10}" y="${gy + 4}" text-anchor="end" fill="#94A3B8" font-size="11" font-family="Inter, sans-serif">${label}</text>
+          `;
+        }
+
+        const polyPoints = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+        const areaPoints = pts.length > 1
+          ? `${pts[0].x.toFixed(1)},${padT + plotH} ${polyPoints} ${pts[pts.length - 1].x.toFixed(1)},${padT + plotH}`
+          : '';
+
+        const nodesSvg = pts.map((p) => {
+          const valLabel = chartMetric === 'avgShot' ? formatGermanDecimal(p.val) : String(Math.round(p.val));
+          const dateLabel = formatShortDate(p.item.session.date).slice(0, 6);
+          const title = `${formatShortDate(p.item.session.date)} • ${p.item.session.weaponName} (${p.item.session.distance}): ${p.item.stats.totalScore}/${p.item.stats.maxTotal} (Ø ${formatGermanDecimal(p.item.stats.avgPerShotExact)})`;
+          return `
+            <g class="chart-node cursor-pointer" data-session-id="${p.item.session.id}">
+              <title>${escapeHtml(title)}</title>
+              <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="12" fill="transparent"/>
+              <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="5" fill="#D8B46E" stroke="#0D0F13" stroke-width="2"/>
+              <text x="${p.x.toFixed(1)}" y="${(p.y - 11).toFixed(1)}" text-anchor="middle" fill="#F0CA7A" font-size="11" font-weight="700" font-family="Inter, sans-serif">${valLabel}</text>
+              <text x="${p.x.toFixed(1)}" y="${H - 14}" text-anchor="middle" fill="#94A3B8" font-size="11" font-family="Inter, sans-serif">${dateLabel}</text>
+            </g>
+          `;
+        }).join('');
+
+        container.innerHTML = `
+          <svg viewBox="0 0 ${W} ${H}" class="w-full min-w-[540px] h-auto block select-none">
+            <defs>
+              <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#D8B46E" stop-opacity="0.28"/>
+                <stop offset="100%" stop-color="#D8B46E" stop-opacity="0.0"/>
+              </linearGradient>
+            </defs>
+            ${gridSvg}
+            ${areaPoints ? `<polygon points="${areaPoints}" fill="url(#trendFill)"/>` : ''}
+            ${pts.length > 1 ? `<polyline points="${polyPoints}" fill="none" stroke="#D8B46E" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` : ''}
+            ${nodesSvg}
+          </svg>
+        `;
+
+        container.querySelectorAll('.chart-node').forEach(node => {
+          node.addEventListener('click', () => loadSessionIntoEditor(node.dataset.sessionId));
+        });
+      }
+
+      function renderWeaponStatsTable() {
+        const tbody = document.getElementById('weaponStatsTableBody');
+        tbody.innerHTML = '';
+
+        if (sessions.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-slate-400">Noch keine Daten vorhanden.</td></tr>';
+          return;
+        }
+
+        const byWeapon = new Map();
+        sessions.forEach(s => {
+          const st = computeStatistics(cloneSessionToEditor(s));
+          const key = s.weaponName || 'Unbenannt';
+          if (!byWeapon.has(key)) {
+            byWeapon.set(key, {
+              weapon: key,
+              count: 0,
+              shots: 0,
+              scoreSum: 0,
+              bestScore: -1,
+              bestMax: 0,
+              lastDate: '',
+              modes: new Set()
+            });
+          }
+          const entry = byWeapon.get(key);
+          entry.count += 1;
+          entry.shots += st.totalShots;
+          entry.scoreSum += st.totalScore;
+          entry.modes.add(s.scoringMode);
+          if (st.totalScore > entry.bestScore) {
+            entry.bestScore = st.totalScore;
+            entry.bestMax = st.maxTotal;
+          }
+          if ((s.date || '') > entry.lastDate) entry.lastDate = s.date || '';
+        });
+
+        const rows = [...byWeapon.values()].sort((a, b) => b.shots - a.shots);
+        rows.forEach(r => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-white/[0.03] transition';
+          const singleMode = r.modes.size === 1;
+          const avgShot = (singleMode && r.shots > 0) ? formatGermanDecimal(r.scoreSum / r.shots) : '–';
+          const best = singleMode ? `${r.bestScore} / ${r.bestMax}` : 'Gemischt';
+
+          tr.innerHTML = `
+            <td class="py-2.5 pr-3 font-semibold text-white">${escapeHtml(r.weapon)}</td>
+            <td class="py-2.5 px-2 text-right text-slate-300">${r.count}</td>
+            <td class="py-2.5 px-2 text-right font-bold text-gold-400">${r.shots}</td>
+            <td class="py-2.5 px-2 text-right text-slate-200">${avgShot}</td>
+            <td class="py-2.5 px-2 text-right text-emerald-400 font-semibold">${best}</td>
+            <td class="py-2.5 pl-2 text-right text-slate-400">${formatShortDate(r.lastDate)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      /* =====================================================================
+       * 11. UI-RENDERING: DATEN & BACKUP + EXPORT / IMPORT
+       * ===================================================================== */
+      function renderBackupView() {
+        const totalShots = sessions.reduce((acc, s) => acc + computeStatistics(cloneSessionToEditor(s)).totalShots, 0);
+        document.getElementById('backupCountSessions').textContent = String(sessions.length);
+        document.getElementById('backupCountShots').textContent = String(totalShots);
+        document.getElementById('backupCountWeapons').textContent = String(customWeapons.length);
+        document.getElementById('backupLastExport').textContent = lastBackupAt ? formatDateTime(lastBackupAt) : 'Noch keines';
+
+        const fsSupported = typeof window.showSaveFilePicker === 'function';
+        document.getElementById('fsSyncCard').classList.toggle('hidden', !fsSupported);
+        if (backupFileHandle) {
+          document.getElementById('fsSyncBadge').textContent = `Verknüpft: ${backupFileHandle.name}`;
+          document.getElementById('fsSyncBadge').className = 'text-[11px] font-semibold text-emerald-400';
+          document.getElementById('btnSyncNowFile').classList.remove('hidden');
+        }
+      }
+
+      function buildBackupJsonString() {
+        return JSON.stringify({
+          app: 'SchiessTagebuch',
+          schemaVersion: 1,
+          exportedAt: new Date().toISOString(),
+          customWeapons,
+          sessions
+        }, null, 2);
+      }
+
+      async function exportJsonBackup() {
+        const jsonStr = buildBackupJsonString();
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const filename = `SchiessTagebuch_Backup_${getTodayIso()}.json`;
+        triggerBlobDownload(blob, filename);
+
+        lastBackupAt = new Date().toISOString();
+        await dbSetMeta('lastBackupAt', lastBackupAt);
+        renderBackupView();
+        showToast(`Backup gespeichert: ${filename}`);
+      }
+
+      async function linkLocalBackupFile() {
+        try {
+          backupFileHandle = await window.showSaveFilePicker({
+            suggestedName: 'SchiessTagebuch_Datenbank.json',
+            types: [{ description: 'JSON-Datenbank', accept: { 'application/json': ['.json'] } }]
+          });
+          await writeBackupToLinkedFile(false);
+          renderBackupView();
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+          console.warn('Datei-Verknüpfung fehlgeschlagen:', err);
+          showToast('Datei konnte nicht verknüpft werden.');
+        }
+      }
+
+      async function writeBackupToLinkedFile(silent = false) {
+        if (!backupFileHandle) return;
+        try {
+          const writable = await backupFileHandle.createWritable();
+          await writable.write(buildBackupJsonString());
+          await writable.close();
+          lastBackupAt = new Date().toISOString();
+          await dbSetMeta('lastBackupAt', lastBackupAt);
+          if (!silent) showToast(`Synchronisiert: ${backupFileHandle.name}`);
+        } catch (err) {
+          console.warn('Direkt-Sync fehlgeschlagen:', err);
+          if (!silent) showToast('Schreiben in verknüpfte Datei fehlgeschlagen.');
+        }
+      }
+
+      async function importJsonBackup(file) {
+        if (!file) return;
+        try {
+          const text = await file.text();
+          const parsed = JSON.parse(text);
+          const incomingSessions = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.sessions) ? parsed.sessions : null);
+          if (!incomingSessions) {
+            showToast('Ungültiges Backup-Format.');
+            return;
+          }
+
+          let importedCount = 0;
+          for (const raw of incomingSessions) {
+            if (!raw || typeof raw !== 'object') continue;
+            const norm = cloneSessionToEditor(raw);
+            const stats = computeStatistics(norm);
+            const payload = {
+              ...norm,
+              id: raw.id || createId(),
+              createdAt: raw.createdAt || new Date().toISOString(),
+              updatedAt: raw.updatedAt || new Date().toISOString(),
+              summary: {
+                totalScore: stats.totalScore,
+                maxTotal: stats.maxTotal,
+                totalShots: stats.totalShots,
+                xCount: stats.xCount,
+                avgSeries: Number(stats.avgPerSeriesExact.toFixed(2)),
+                avgShot: Number(stats.avgPerShotExact.toFixed(2))
+              }
+            };
+            await dbPutSession(payload);
+            importedCount += 1;
+          }
+
+          if (Array.isArray(parsed.customWeapons)) {
+            const existingNames = new Set(customWeapons.map(w => w.name.toLowerCase()));
+            parsed.customWeapons.forEach(w => {
+              if (w && w.name && !existingNames.has(w.name.toLowerCase())) {
+                customWeapons.push({ name: w.name, icon: w.icon || 'pistol' });
+                existingNames.add(w.name.toLowerCase());
+              }
+            });
+            await dbSetMeta('customWeapons', customWeapons);
+          }
+
+          await refreshSessionsFromDb();
+          renderWeaponPresetsUI();
+          showToast(`${importedCount} Einträge erfolgreich importiert`);
+        } catch (err) {
+          console.error('Import fehlgeschlagen:', err);
+          showToast('JSON-Import fehlgeschlagen.');
+        }
+      }
+
+      function exportCsv() {
+        if (sessions.length === 0) {
+          showToast('Keine Einträge für CSV-Export vorhanden.');
+          return;
+        }
+        const csvEsc = (v) => {
+          const s = String(v === null || v === undefined ? '' : v);
+          return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+        };
+
+        const header = [
+          'Datum', 'Waffe', 'Distanz', 'Modus', 'Faktor',
+          'Gesamt', 'Maximum', 'Schuesse', 'Innenzehner_X',
+          'Schnitt_Serie', 'Schnitt_Schuss', 'Munition', 'Stand', 'Anschlag', 'Notizen',
+          'R01', 'R02', 'R03', 'R04', 'R05', 'R06', 'R07', 'R08', 'R09', 'R10'
+        ];
+
+        const lines = [header.join(';')];
+        sessions.forEach(s => {
+          const ed = cloneSessionToEditor(s);
+          const st = computeStatistics(ed);
+          const rounds = getCurrentRounds(ed);
+          const roundStrings = rounds.map((r, i) => `${st.roundStats[i].sum} (${r.filter(Boolean).join(',')})`);
+          lines.push([
+            s.date, s.weaponName, s.distance, s.scoringMode,
+            s.scoringMode === 'ipsc' ? s.ipscFactor : '',
+            st.totalScore, st.maxTotal, st.totalShots, st.xCount,
+            formatGermanDecimal(st.avgPerSeriesExact), formatGermanDecimal(st.avgPerShotExact),
+            s.ammo || '', s.location || '', s.position || '', s.notes || '',
+            ...roundStrings
+          ].map(csvEsc).join(';'));
+        });
+
+        const bom = '\uFEFF'; // UTF-8 BOM für Excel
+        const blob = new Blob([bom + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        const filename = `SchiessTagebuch_${getTodayIso()}.csv`;
+        triggerBlobDownload(blob, filename);
+        showToast(`CSV exportiert: ${filename}`);
+      }
+
+      /* =====================================================================
+       * 12. SCHNELLE TREFFER-EINGABE & PNG-EXPORT
+       * ===================================================================== */
+      function selectSlot(r, s, scrollIntoView = false) {
+        activeRound = Math.max(0, Math.min(ROUNDS_COUNT - 1, r));
+        activeShot = Math.max(0, Math.min(SHOTS_PER_ROUND - 1, s));
+        renderRoundsUI();
+        if (scrollIntoView) {
+          const rowEl = document.getElementById(`uiRoundRow_${activeRound}`);
+          if (rowEl) rowEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+
+      function handleHitInput(token) {
+        const rounds = getCurrentRounds();
+        rounds[activeRound][activeShot] = token;
+        if (activeShot < SHOTS_PER_ROUND - 1) {
+          activeShot += 1;
+        } else if (activeRound < ROUNDS_COUNT - 1) {
+          activeRound += 1;
+          activeShot = 0;
+        }
+        markDirty();
+        renderCanvas();
+        renderRoundsUI();
+        const rowEl = document.getElementById(`uiRoundRow_${activeRound}`);
+        if (rowEl) rowEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      function handleBackspace() {
+        const rounds = getCurrentRounds();
+        if (rounds[activeRound][activeShot] !== '') {
+          rounds[activeRound][activeShot] = '';
+        } else {
+          if (activeShot > 0) activeShot -= 1;
+          else if (activeRound > 0) { activeRound -= 1; activeShot = SHOTS_PER_ROUND - 1; }
+          rounds[activeRound][activeShot] = '';
+        }
+        markDirty();
+        renderCanvas();
+        renderRoundsUI();
+      }
+
+      function handleClearSlot() {
+        getCurrentRounds()[activeRound][activeShot] = '';
+        markDirty();
+        renderCanvas();
+        renderRoundsUI();
+      }
+
+      function handleNextRound() {
+        selectSlot(activeRound < ROUNDS_COUNT - 1 ? activeRound + 1 : 0, 0, true);
+      }
+
+      function buildExportFilename(targetState = state) {
+        const datePart = /^\d{4}-\d{2}-\d{2}$/.test(targetState.date) ? targetState.date : 'training';
+        const sanitize = (str) =>
+          (str || '').trim()
+            .replace(/×/g, 'x').replace(/ä/gi, 'ae').replace(/ö/gi, 'oe').replace(/ü/gi, 'ue').replace(/ß/gi, 'ss')
+            .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        return `${datePart}_${sanitize(targetState.weaponName) || 'Waffe'}_${sanitize(targetState.distance) || 'Distanz'}.png`;
+      }
+
+      function triggerBlobDownload(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+      }
+
+      function downloadPng() {
+        renderCanvas();
+        const filename = buildExportFilename(state);
+        canvas.toBlob(blob => {
+          if (!blob) return showToast('PNG-Erzeugung fehlgeschlagen.');
+          triggerBlobDownload(blob, filename);
+          showToast(`PNG gespeichert: ${filename}`);
+        }, 'image/png');
+      }
+
+      function exportSessionPngDirect(sess) {
+        const off = document.createElement('canvas');
+        off.width = 1920;
+        off.height = 1080;
+        const offCtx = off.getContext('2d');
+        const st = cloneSessionToEditor(sess);
+        renderCanvasTo(offCtx, st);
+        const filename = buildExportFilename(st);
+        off.toBlob(blob => {
+          if (!blob) return showToast('PNG-Export fehlgeschlagen.');
+          triggerBlobDownload(blob, filename);
+          showToast(`PNG gespeichert: ${filename}`);
+        }, 'image/png');
+      }
+
+      async function sharePng() {
+        try {
+          renderCanvas();
+          const filename = buildExportFilename(state);
+          const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+          if (!blob) return showToast('PNG konnte nicht erstellt werden.');
+          const file = new File([blob], filename, { type: 'image/png' });
+          if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: `Schießtraining – ${state.weaponName}`,
+              text: `${state.weaponName} (${state.distance}) am ${formatGermanDate(state.date)}`
+            });
+            showToast('Grafik geteilt');
+          } else {
+            triggerBlobDownload(blob, filename);
+            showToast('Teilen nicht unterstützt – PNG gespeichert.');
+          }
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+          downloadPng();
+        }
+      }
+
+      /* =====================================================================
+       * 13. MODALS & TOAST
+       * ===================================================================== */
+      function showToast(message) {
+        const toast = document.getElementById('toast');
+        document.getElementById('toastInner').textContent = message;
+        toast.classList.remove('opacity-0', '-translate-y-2');
+        toast.classList.add('opacity-100', 'translate-y-0');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          toast.classList.add('opacity-0', '-translate-y-2');
+          toast.classList.remove('opacity-100', 'translate-y-0');
+        }, 2300);
+      }
+
+      function openConfirm(title, message, onConfirm) {
+        document.getElementById('confirmTitle').textContent = title;
+        document.getElementById('confirmMessage').textContent = message;
+        confirmCallback = onConfirm;
+        document.getElementById('confirmModal').classList.remove('hidden');
+      }
+
+      function closeConfirm() {
+        document.getElementById('confirmModal').classList.add('hidden');
+        confirmCallback = null;
+      }
+
+      function openZoomModal() {
+        renderCanvas();
+        document.getElementById('zoomPreviewImg').src = canvas.toDataURL('image/png');
+        document.getElementById('zoomModal').classList.remove('hidden');
+      }
+
+      function closeZoomModal() {
+        document.getElementById('zoomModal').classList.add('hidden');
+      }
+
+      /* =====================================================================
+       * 14. EVENT-LISTENER
+       * ===================================================================== */
+      function bindEvents() {
+        // Hauptnavigation
+        document.getElementById('navBtnEditor').addEventListener('click', () => switchView('editor'));
+        document.getElementById('navBtnLogbook').addEventListener('click', () => switchView('logbook'));
+        document.getElementById('navBtnStats').addEventListener('click', () => switchView('stats'));
+        document.getElementById('navBtnBackup').addEventListener('click', () => switchView('backup'));
+        document.getElementById('btnHeaderNewSession').addEventListener('click', startNewSession);
+
+        // Session-Kontextleiste
+        document.getElementById('quickSessionSelect').addEventListener('change', (e) => {
+          const id = e.target.value;
+          if (!id) return;
+          if (id === state.id) return;
+          loadSessionIntoEditor(id);
+        });
+        document.getElementById('btnSaveSession').addEventListener('click', () => saveCurrentSession(false));
+        document.getElementById('btnSaveAsCopy').addEventListener('click', () => saveCurrentSession(true));
+        document.getElementById('btnDeleteCurrentSession').addEventListener('click', () => {
+          if (state.id) confirmDeleteSession(state.id);
+        });
+
+        // Editor-Tabs
+        document.getElementById('tabBtnHits').addEventListener('click', () => { activeTab = 'hits'; renderTabsUI(); });
+        document.getElementById('tabBtnSetup').addEventListener('click', () => { activeTab = 'setup'; renderTabsUI(); });
+        document.getElementById('tabBtnDetails').addEventListener('click', () => { activeTab = 'details'; renderTabsUI(); });
+        document.getElementById('btnQuickJumpSetup').addEventListener('click', () => { activeTab = 'setup'; renderTabsUI(); });
+
+        // Vollbild & Export
+        canvas.addEventListener('click', openZoomModal);
+        document.getElementById('btnOpenZoom').addEventListener('click', openZoomModal);
+        document.getElementById('btnCloseZoom').addEventListener('click', closeZoomModal);
+        document.getElementById('zoomModal').addEventListener('click', (e) => { if (e.target.id === 'zoomModal') closeZoomModal(); });
+        document.getElementById('btnZoomDownload').addEventListener('click', downloadPng);
+        document.getElementById('btnZoomShare').addEventListener('click', sharePng);
+        document.getElementById('btnDownloadPng').addEventListener('click', downloadPng);
+        document.getElementById('btnSharePng').addEventListener('click', sharePng);
+
+        // Confirm Modal
+        document.getElementById('btnConfirmCancel').addEventListener('click', closeConfirm);
+        document.getElementById('btnConfirmOk').addEventListener('click', () => {
+          const cb = confirmCallback;
+          closeConfirm();
+          if (typeof cb === 'function') cb();
+        });
+
+        // Keypad
+        document.getElementById('btnKeyBackspace').addEventListener('click', handleBackspace);
+        document.getElementById('btnKeyClearSlot').addEventListener('click', handleClearSlot);
+        document.getElementById('btnKeyNextRound').addEventListener('click', handleNextRound);
+
+        document.getElementById('quickModeRings').addEventListener('click', () => {
+          state.scoringMode = 'rings'; markDirty(); renderAllEditorUI();
+        });
+        document.getElementById('quickModeIpsc').addEventListener('click', () => {
+          state.scoringMode = 'ipsc'; markDirty(); renderAllEditorUI();
+        });
+
+        document.getElementById('btnClearAll').addEventListener('click', () => {
+          const modeLabel = state.scoringMode === 'ipsc' ? 'IPSC-Treffer' : 'Ring-Treffer';
+          openConfirm(
+            'Alle Treffer leeren?',
+            `Möchtest du alle 50 ${modeLabel} im aktuellen Formular leeren?`,
+            () => {
+              if (state.scoringMode === 'ipsc') state.ipscRounds = createEmptyRounds();
+              else state.ringRounds = createEmptyRounds();
+              activeRound = 0; activeShot = 0;
+              markDirty(); renderAllEditorUI();
+              showToast('Treffer geleert');
+            }
+          );
+        });
+
+        // Setup
+        document.getElementById('selectWeaponPreset').addEventListener('change', (e) => {
+          const val = e.target.value;
+          if (!val || val === '__custom__') return;
+          try {
+            const parsed = JSON.parse(val);
+            if (parsed && parsed.name) {
+              selectWeaponPreset(parsed.name, parsed.icon);
+              showToast(`${parsed.name} gewählt`);
+            }
+          } catch {}
+        });
+
+        document.getElementById('inputWeaponName').addEventListener('input', (e) => {
+          state.weaponName = e.target.value;
+          markDirty(); renderCanvas(); renderWeaponPresetsUI();
+        });
+
+        document.getElementById('btnSaveCustomWeapon').addEventListener('click', async () => {
+          const name = state.weaponName.trim();
+          if (!name) return;
+          if (ALL_STANDARD_PRESETS.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+            return showToast('Bereits in Standard-Waffen enthalten');
+          }
+          if (customWeapons.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+            return showToast('Bereits gespeichert');
+          }
+          customWeapons.push({ name, icon: state.weaponIcon });
+          await dbSetMeta('customWeapons', customWeapons);
+          renderWeaponPresetsUI();
+          showToast('Als eigene Waffe gespeichert');
+        });
+
+        document.getElementById('inputDistance').addEventListener('input', (e) => {
+          state.distance = e.target.value;
+          markDirty(); renderCanvas(); renderSetupUI();
+        });
+        document.querySelectorAll('.dist-chip').forEach(btn => {
+          btn.addEventListener('click', () => {
+            state.distance = btn.dataset.dist;
+            document.getElementById('inputDistance').value = state.distance;
+            markDirty(); renderAllEditorUI();
+          });
+        });
+
+        document.getElementById('inputDate').addEventListener('change', (e) => {
+          state.date = e.target.value; markDirty(); renderAllEditorUI();
+        });
+        document.getElementById('btnDateToday').addEventListener('click', () => {
+          state.date = getTodayIso();
+          document.getElementById('inputDate').value = state.date;
+          markDirty(); renderAllEditorUI();
+          showToast('Heutiges Datum gesetzt');
+        });
+
+        document.querySelectorAll('.weapon-icon-btn').forEach(btn => {
+          btn.addEventListener('click', () => { state.weaponIcon = btn.dataset.weaponIcon; markDirty(); renderAllEditorUI(); });
+        });
+        document.querySelectorAll('.target-type-btn').forEach(btn => {
+          btn.addEventListener('click', () => { state.targetType = btn.dataset.targetType; markDirty(); renderAllEditorUI(); });
+        });
+
+        document.getElementById('btnModeRings').addEventListener('click', () => { state.scoringMode = 'rings'; markDirty(); renderAllEditorUI(); });
+        document.getElementById('btnModeIpsc').addEventListener('click', () => { state.scoringMode = 'ipsc'; markDirty(); renderAllEditorUI(); });
+        document.getElementById('btnFactorMinor').addEventListener('click', () => { state.ipscFactor = 'minor'; markDirty(); renderAllEditorUI(); });
+        document.getElementById('btnFactorMajor').addEventListener('click', () => { state.ipscFactor = 'major'; markDirty(); renderAllEditorUI(); });
+
+        document.getElementById('toggleSortDesc').addEventListener('change', (e) => { state.sortRoundHitsDesc = e.target.checked; markDirty(); renderAllEditorUI(); });
+        document.getElementById('toggleShowX').addEventListener('change', (e) => { state.showXCount = e.target.checked; markDirty(); renderAllEditorUI(); });
+
+        // Tagebuch-Details Inputs
+        ['inputAmmo', 'inputLocation', 'inputPosition', 'inputNotes'].forEach(id => {
+          const propMap = { inputAmmo: 'ammo', inputLocation: 'location', inputPosition: 'position', inputNotes: 'notes' };
+          document.getElementById(id).addEventListener('input', (e) => {
+            state[propMap[id]] = e.target.value;
+            markDirty();
+            renderCanvasMetaSummary();
+          });
+        });
+
+        // Tagebuch-Filter
+        ['filterSearch', 'filterWeapon', 'filterDistance', 'filterMode', 'filterSort'].forEach(id => {
+          const ev = id === 'filterSearch' ? 'input' : 'change';
+          document.getElementById(id).addEventListener(ev, renderLogbookView);
+        });
+        document.getElementById('btnResetFilters').addEventListener('click', () => {
+          document.getElementById('filterSearch').value = '';
+          document.getElementById('filterWeapon').value = '';
+          document.getElementById('filterDistance').value = '';
+          document.getElementById('filterMode').value = '';
+          document.getElementById('filterSort').value = 'date_desc';
+          renderLogbookView();
+        });
+        document.getElementById('btnEmptyNewSession').addEventListener('click', startNewSession);
+        document.getElementById('btnEmptyLoadSamples').addEventListener('click', seedSampleSessions);
+
+        // Statistik-Filter & Chart-Metrik
+        ['statsFilterWeapon', 'statsFilterDistance', 'statsFilterMode'].forEach(id => {
+          document.getElementById(id).addEventListener('change', renderStatsView);
+        });
+        document.querySelectorAll('.chart-metric-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            chartMetric = btn.dataset.metric;
+            renderStatsView();
+          });
+        });
+
+        // Daten & Backup
+        document.getElementById('btnExportJson').addEventListener('click', exportJsonBackup);
+        document.getElementById('inputImportJson').addEventListener('change', (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (file) importJsonBackup(file);
+          e.target.value = '';
+        });
+        document.getElementById('btnExportCsv').addEventListener('click', exportCsv);
+        document.getElementById('btnLinkBackupFile').addEventListener('click', linkLocalBackupFile);
+        document.getElementById('btnSyncNowFile').addEventListener('click', () => writeBackupToLinkedFile(false));
+        document.getElementById('btnSeedSamples').addEventListener('click', seedSampleSessions);
+        document.getElementById('btnWipeDatabase').addEventListener('click', () => {
+          openConfirm(
+            'Gesamtes Tagebuch löschen?',
+            'Alle gespeicherten Trainings werden unwiderruflich aus der lokalen Datenbank gelöscht. Erstelle vorher ein JSON-Backup.',
+            async () => {
+              await dbClearSessions();
+              state = createNewEditorState();
+              isDirty = false;
+              saveDraftToLocal();
+              await refreshSessionsFromDb();
+              renderAllEditorUI();
+              showToast('Datenbank geleert');
+            }
+          );
+        });
+
+        // Tastatursteuerung
+        document.addEventListener('keydown', (e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+            if (activeView === 'editor') {
+              e.preventDefault();
+              saveCurrentSession(false);
+            }
+            return;
+          }
+
+          if (e.key === 'Escape') {
+            closeZoomModal();
+            closeConfirm();
+            return;
+          }
+
+          const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+          if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+          if (activeView !== 'editor' || activeTab !== 'hits') return;
+
+          if (e.key === 'Backspace') { e.preventDefault(); handleBackspace(); return; }
+          if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            if (activeShot < SHOTS_PER_ROUND - 1) selectSlot(activeRound, activeShot + 1, true);
+            else if (activeRound < ROUNDS_COUNT - 1) selectSlot(activeRound + 1, 0, true);
+            return;
+          }
+          if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            if (activeShot > 0) selectSlot(activeRound, activeShot - 1, true);
+            else if (activeRound > 0) selectSlot(activeRound - 1, SHOTS_PER_ROUND - 1, true);
+            return;
+          }
+          if (e.key === 'ArrowDown') { e.preventDefault(); selectSlot(activeRound + 1, activeShot, true); return; }
+          if (e.key === 'ArrowUp') { e.preventDefault(); selectSlot(activeRound - 1, activeShot, true); return; }
+
+          const k = e.key.toUpperCase();
+          if (state.scoringMode === 'ipsc') {
+            if (['A', 'C', 'D', 'M'].includes(k)) { e.preventDefault(); handleHitInput(k); }
+          } else {
+            if (k === 'X') { e.preventDefault(); handleHitInput('X'); }
+            else if (/^[0-9]$/.test(k)) { e.preventDefault(); handleHitInput(k); }
+            else if (k === 'T' || e.key === '+' || e.key === '*') { e.preventDefault(); handleHitInput('10'); }
+          }
+        });
+
+        // Warnung bei Browser-Tab schließen mit ungespeicherten Daten
+        window.addEventListener('beforeunload', (e) => {
+          if (isDirty) {
+            e.preventDefault();
+            e.returnValue = '';
+          }
+        });
+      }
+
+      /* =====================================================================
+       * 15. INITIALISIERUNG
+       * ===================================================================== */
+      async function init() {
+        bindEvents();
+
+        try {
+          db = await openDatabase();
+          await migrateLegacyStorageIfNeeded();
+          customWeapons = await dbGetMeta('customWeapons', []);
+          lastBackupAt = await dbGetMeta('lastBackupAt', null);
+          await refreshSessionsFromDb();
+        } catch (err) {
+          console.error('Datenbank-Initialisierung fehlgeschlagen:', err);
+          showToast('Warnung: IndexedDB blockiert – nur Sitzungsspeicher aktiv.');
+        }
+
+        // Letzten Entwurf wiederherstellen oder aktuellstes Training laden
+        const draft = loadDraftFromLocal();
+        if (draft && draft.state) {
+          state = cloneSessionToEditor(draft.state);
+          // Prüfen, ob referenzierte ID noch in DB existiert
+          if (state.id && !sessions.some(s => s.id === state.id)) {
+            state.id = null;
+          }
+          isDirty = Boolean(draft.isDirty);
+        } else if (sessions.length > 0) {
+          state = cloneSessionToEditor(sessions[0]);
+          isDirty = false;
+        } else {
+          state = createNewEditorState();
+          isDirty = false;
+        }
+
+        switchView('editor');
+        renderTabsUI();
+        renderAllEditorUI();
+
+        if (document.fonts && document.fonts.ready) {
+          Promise.all([
+            document.fonts.load('500 42px "Barlow Condensed"'),
+            document.fonts.load('700 80px "Barlow Condensed"')
+          ])
+            .catch(() => {})
+            .finally(() => {
+              document.fonts.ready.then(() => renderCanvas());
+            });
+        }
+      }
+
+      window.addEventListener('DOMContentLoaded', init);
+    })();
+  </script>
+</body>
+</html>
