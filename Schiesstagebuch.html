@@ -418,7 +418,10 @@
 
             <!-- Karte 4: Zieltyp -->
             <div class="rounded-2xl bg-tactical-900 border border-white/10 p-4 space-y-2.5">
-              <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Zieltyp (Icon & Wasserzeichen)</div>
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Zieltyp (Icon & Wasserzeichen)</span>
+                <span class="text-[11px] text-slate-500 text-right">Folgt automatisch dem Modus</span>
+              </div>
               <div class="grid grid-cols-3 gap-2">
                 <button type="button" data-target-type="target" class="target-type-btn p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition active:scale-95 touch-manipulation">
                   <svg class="w-8 h-8" viewBox="0 0 64 64">
@@ -499,23 +502,86 @@
 
           <!-- ================= TAB 3: TAGEBUCH-DETAILS (MUNITION, STAND, NOTIZEN) ================= -->
           <div id="panelDetails" class="hidden space-y-3.5">
-            <div class="rounded-2xl bg-tactical-900 border border-white/10 p-4 space-y-4">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-bold uppercase tracking-wider text-gold-400">Tagebuch-Protokoll</span>
-                <span class="text-[11px] text-slate-400">Nicht auf der PNG-Grafik</span>
+
+            <!-- Karte: Munition & Munitions-Datensätze (analog zu den Waffen-Presets) -->
+            <div class="rounded-2xl bg-tactical-900 border border-white/10 p-4 space-y-3.5">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="text-xs font-bold uppercase tracking-wider text-gold-400">Munition & Datensätze</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">Einmal anlegen, immer wieder verwenden • nicht auf der PNG-Grafik</div>
+                </div>
+                <button id="btnNewAmmo" type="button" class="shrink-0 text-xs font-semibold text-gold-400 hover:text-gold-300 transition px-2.5 py-1 rounded-lg bg-gold-500/10 border border-gold-500/25 active:scale-95">+ Neue Munition</button>
               </div>
 
-              <!-- Munition -->
-              <div class="space-y-1.5">
-                <label for="inputAmmo" class="text-xs font-bold uppercase tracking-wider text-slate-400">Munition / Laborierung</label>
+              <div id="ammoSelectWrap" class="hidden space-y-1.5">
+                <label for="selectAmmoPreset" class="sr-only">Munitions-Datensatz wählen</label>
+                <select id="selectAmmoPreset" class="w-full px-3.5 py-2.5 rounded-xl bg-tactical-950 border border-white/15 focus:border-gold-400 focus:outline-none text-sm font-semibold text-white"></select>
+              </div>
+
+              <div id="ammoChipsContainer" class="space-y-3 pt-0.5"></div>
+
+              <!-- Formular: Munitions-Datensatz anlegen / bearbeiten -->
+              <div id="ammoForm" class="hidden rounded-xl bg-tactical-950 border border-gold-500/30 p-3.5 space-y-3">
+                <div class="flex items-center justify-between gap-2">
+                  <span id="ammoFormTitle" class="text-xs font-bold uppercase tracking-wider text-gold-400">Neue Munition anlegen</span>
+                  <button id="btnAmmoFormClose" type="button" aria-label="Formular schließen" class="px-2 py-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 text-xs font-semibold transition">✕</button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2.5">
+                  <div class="space-y-1 min-w-0">
+                    <label for="ammoFormManufacturer" class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Hersteller *</label>
+                    <input id="ammoFormManufacturer" type="text" maxlength="60" autocomplete="off" placeholder="z. B. S&B, Geco" class="ammo-form-input w-full px-3 py-2 rounded-xl bg-tactical-900 border border-white/15 focus:border-gold-400 focus:outline-none text-sm font-medium text-white placeholder-slate-500" />
+                  </div>
+                  <div class="space-y-1 min-w-0">
+                    <label for="ammoFormCaliber" class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Kaliber *</label>
+                    <input id="ammoFormCaliber" type="text" maxlength="40" autocomplete="off" list="caliberDatalist" placeholder="z. B. 9×19, .22lr" class="ammo-form-input w-full px-3 py-2 rounded-xl bg-tactical-900 border border-white/15 focus:border-gold-400 focus:outline-none text-sm font-medium text-white placeholder-slate-500" />
+                  </div>
+                  <div class="space-y-1 min-w-0">
+                    <label for="ammoFormBulletType" class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Geschosstyp</label>
+                    <input id="ammoFormBulletType" type="text" maxlength="60" autocomplete="off" list="bulletTypeDatalist" placeholder="z. B. FMJ, JHP" class="ammo-form-input w-full px-3 py-2 rounded-xl bg-tactical-900 border border-white/15 focus:border-gold-400 focus:outline-none text-sm font-medium text-white placeholder-slate-500" />
+                  </div>
+                  <div class="space-y-1 min-w-0">
+                    <label for="ammoFormWeight" class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Gewicht (gr)</label>
+                    <input id="ammoFormWeight" type="text" maxlength="8" autocomplete="off" inputmode="decimal" placeholder="z. B. 124" class="ammo-form-input w-full px-3 py-2 rounded-xl bg-tactical-900 border border-white/15 focus:border-gold-400 focus:outline-none text-sm font-medium text-white placeholder-slate-500" />
+                  </div>
+                  <div class="col-span-2 space-y-1 min-w-0">
+                    <label for="ammoFormRemark" class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Bemerkung (optional)</label>
+                    <input id="ammoFormRemark" type="text" maxlength="160" autocomplete="off" placeholder="z. B. Los-Nr., Händler, Präzisionseindruck" class="ammo-form-input w-full px-3 py-2 rounded-xl bg-tactical-900 border border-white/15 focus:border-gold-400 focus:outline-none text-sm font-medium text-white placeholder-slate-500" />
+                  </div>
+                </div>
+
+                <div class="text-xs text-slate-400 break-words">Bezeichnung: <span id="ammoFormPreview" class="font-semibold text-white">–</span></div>
+                <div id="ammoFormError" class="hidden text-xs font-semibold text-red-300"></div>
+
+                <div class="grid grid-cols-2 gap-2">
+                  <button id="btnAmmoFormCancel" type="button" class="py-2 px-3 rounded-xl bg-tactical-800 hover:bg-tactical-700 border border-white/10 text-xs sm:text-sm font-semibold text-slate-200 transition active:scale-95">Abbrechen</button>
+                  <button id="btnAmmoFormSave" type="button" class="py-2 px-3 rounded-xl bg-gold-500 hover:bg-gold-400 text-xs sm:text-sm font-bold text-slate-950 transition active:scale-95">Speichern &amp; wählen</button>
+                </div>
+
+                <datalist id="caliberDatalist"></datalist>
+                <datalist id="bulletTypeDatalist"></datalist>
+              </div>
+
+              <!-- Aktuelle Munition des Trainings (Freitext bleibt möglich) -->
+              <div class="pt-3 border-t border-white/10 space-y-1.5">
+                <label for="inputAmmo" class="text-xs font-bold uppercase tracking-wider text-slate-400">Munition dieses Trainings (manuell editierbar)</label>
                 <input
                   id="inputAmmo"
                   type="text"
                   list="ammoDatalist"
-                  placeholder="z. B. S&B 124gr FMJ, SK Rifle Match, GGG .308 168gr"
+                  placeholder="z. B. S&B 9×19 124gr FMJ"
                   class="w-full px-3.5 py-2.5 rounded-xl bg-tactical-950 border border-white/15 focus:border-gold-400 focus:outline-none text-sm font-medium text-white placeholder-slate-500"
                 />
                 <datalist id="ammoDatalist"></datalist>
+                <p id="ammoSelectedInfo" class="hidden text-[11px] text-slate-400 break-words"></p>
+                <p id="ammoCaliberWarning" class="hidden text-[11px] font-semibold text-amber-300"></p>
+              </div>
+            </div>
+
+            <div class="rounded-2xl bg-tactical-900 border border-white/10 p-4 space-y-4">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-gold-400">Tagebuch-Protokoll</span>
+                <span class="text-[11px] text-slate-400">Nicht auf der PNG-Grafik</span>
               </div>
 
               <!-- Schießstand / Ort -->
@@ -778,6 +844,10 @@
               <div id="backupCountWeapons" class="text-xl font-condensed font-bold text-white mt-0.5">0</div>
             </div>
             <div class="p-3 rounded-xl bg-tactical-950 border border-white/10">
+              <div class="text-slate-400">Munitions-Datensätze</div>
+              <div id="backupCountAmmo" class="text-xl font-condensed font-bold text-white mt-0.5">0</div>
+            </div>
+            <div class="col-span-2 p-3 rounded-xl bg-tactical-950 border border-white/10">
               <div class="text-slate-400">Letztes JSON-Backup</div>
               <div id="backupLastExport" class="text-sm font-semibold text-slate-200 mt-1">Noch keines</div>
             </div>
@@ -945,6 +1015,16 @@
       const ALL_STANDARD_PRESETS = STANDARD_WEAPON_CATEGORIES.flatMap(cat =>
         cat.weapons.map(name => ({ name, icon: cat.icon, category: cat.label }))
       );
+
+      // Vorschläge für das Munitions-Formular (nur Eingabehilfe, keine Datensätze)
+      const COMMON_CALIBERS = [
+        '9×19', '.22lr', '.223 Rem', '5,56×45', '.308 Win', '7,62×51', '.45 ACP',
+        '.38 Special', '.357 Magnum', '9×21', '6,5 Creedmoor', '.300 Win Mag', '7,62×39'
+      ];
+      const COMMON_BULLET_TYPES = [
+        'FMJ', 'TMJ', 'JHP', 'HP', 'HPBT', 'RN', 'LRN', 'FP', 'SP', 'Wadcutter',
+        'Sierra MatchKing', 'Match', 'Rifle Match', 'Standard'
+      ];
 
       const RING_TILE_STYLES = {
         'X':  { top: '#F0CA52', bottom: '#BD8C1A', border: '#FFE58A', text: '#111111' },
@@ -1151,12 +1231,111 @@
         };
       }
 
+      /* ---------------------------------------------------------------------
+       * 3b. MUNITIONS-DATENSÄTZE & KALIBER-ERKENNUNG
+       * --------------------------------------------------------------------- */
+
+      // Vereinheitlicht Kaliber-Schreibweisen für den Vergleich:
+      // "9×19" = "9x19" = "9mm Luger" = "9 mm Para", ".22lr" = ".22 LR" = ".22 l.f.B.",
+      // ".223" = ".223 Rem.", ".308" = ".308 Win" (5,56×45 / 7,62×51 bleiben bewusst eigene Kaliber)
+      function normalizeCaliber(raw) {
+        let s = String(raw || '').toLowerCase().trim();
+        if (!s) return '';
+        s = s
+          .replace(/[×✕]/g, 'x')
+          .replace(/\s+/g, '')
+          .replace(/^(kal|cal)\.?/, '')
+          .replace(/[.,]/g, '')
+          .replace(/(luger|parabellum|para|remington|rem|winchester|win)$/, '');
+        const aliases = { '9mm': '9x19', '9x19mm': '9x19', '22lfb': '22lr' };
+        return aliases[s] || s;
+      }
+
+      // Kaliber aus dem Waffennamen lesen: bevorzugt das Format "Name - Kaliber",
+      // sonst typische Kaliber-Schreibweisen im Namen (z. B. "Walther Q5 9mm").
+      function extractCaliberFromWeaponName(name) {
+        const raw = String(name || '').trim();
+        if (!raw) return '';
+        const parts = raw.split(/\s+[-–—]\s+/);
+        if (parts.length > 1) {
+          const last = parts[parts.length - 1].trim();
+          if (/\d/.test(last)) return last;
+        }
+        const m = raw.match(/(?:^|\s)(\.\d{2,3}(?:\s?(?:lr|l\.?f\.?b\.?|acp|wmr|win(?:\s?mag)?|rem|special|spl|magnum|mag|creedmoor))?|\d{1,2}(?:[.,]\d{1,2})?\s?[x×]\s?\d{2,3}(?:\s?mm)?|\d{1,2}(?:[.,]\d)?\s?mm(?:\s?(?:luger|para))?)(?=$|[\s),;])/i);
+        return m ? m[1].trim() : '';
+      }
+
+      function createAmmoId() {
+        return 'ammo_' + createId();
+      }
+
+      // Liefert '' (leer), eine normalisierte Zahl als String oder null (ungültig)
+      function normalizeBulletWeight(value) {
+        const s = String(value === null || value === undefined ? '' : value)
+          .trim()
+          .replace(/\s*(grains|grain|gr)\.?$/i, '')
+          .replace(',', '.');
+        if (!s) return '';
+        if (!/^\d+(\.\d+)?$/.test(s)) return null;
+        const n = Number(s);
+        if (!Number.isFinite(n) || n <= 0 || n > 1000) return null;
+        return String(Math.round(n * 10) / 10);
+      }
+
+      function formatBulletWeight(weight) {
+        return weight ? `${String(weight).replace('.', ',')}gr` : '';
+      }
+
+      // Bezeichnung: "Hersteller Kaliber Gewicht Geschosstyp", z. B. "S&B 9×19 124gr FMJ"
+      function buildAmmoLabel(rec) {
+        return [rec.manufacturer, rec.caliber, formatBulletWeight(rec.bulletWeight), rec.bulletType]
+          .map(v => String(v || '').trim())
+          .filter(Boolean)
+          .join(' ');
+      }
+
+      function sanitizeAmmoRecord(raw) {
+        if (!raw || typeof raw !== 'object') return null;
+        const clean = (v, max) => String(v === null || v === undefined ? '' : v).replace(/\s+/g, ' ').trim().slice(0, max);
+        const rec = {
+          id: clean(raw.id, 80) || createAmmoId(),
+          manufacturer: clean(raw.manufacturer, 60),
+          caliber: clean(raw.caliber, 40),
+          bulletType: clean(raw.bulletType, 60),
+          bulletWeight: normalizeBulletWeight(raw.bulletWeight) || '',
+          remark: clean(raw.remark, 160)
+        };
+        rec.name = buildAmmoLabel(rec);
+        return rec.name ? rec : null;
+      }
+
+      function sanitizeAmmoList(list) {
+        if (!Array.isArray(list)) return [];
+        const result = [];
+        const names = new Set();
+        const ids = new Set();
+        list.forEach(raw => {
+          const rec = sanitizeAmmoRecord(raw);
+          if (!rec) return;
+          const key = rec.name.toLowerCase();
+          if (names.has(key)) return;
+          if (ids.has(rec.id)) rec.id = createAmmoId();
+          names.add(key);
+          ids.add(rec.id);
+          result.push(rec);
+        });
+        return result;
+      }
+
       /* =====================================================================
        * 4. APPLIKATIONS-ZUSTAND
        * ===================================================================== */
       let state = createNewEditorState();
       let sessions = [];             // Alle aus IndexedDB geladenen Einträge
       let customWeapons = [];        // In IndexedDB Meta gespeichert
+      let customAmmo = [];           // Munitions-Datensätze, in IndexedDB Meta gespeichert
+      let ammoEditId = null;         // null = Formular für neuen Datensatz, sonst ID des bearbeiteten
+      let ammoOthersExpanded = false; // "Andere Kaliber" aufgeklappt?
       let lastBackupAt = null;
       let isDirty = false;           // Ungespeicherte Änderungen im Editor?
 
@@ -2431,6 +2610,7 @@
       function renderDatalists() {
         const ammoSet = new Set();
         const locSet = new Set();
+        customAmmo.forEach(a => ammoSet.add(a.name));
         sessions.forEach(s => {
           if (s.ammo && s.ammo.trim()) ammoSet.add(s.ammo.trim());
           if (s.location && s.location.trim()) locSet.add(s.location.trim());
@@ -2469,6 +2649,23 @@
         state.weaponName = name;
         if (icon) state.weaponIcon = icon;
         document.getElementById('inputWeaponName').value = name;
+        markDirty();
+        renderAllEditorUI();
+      }
+
+      // Wertungsmodus wechseln – das Zieltyp-Icon (rechts oben + Wasserzeichen) wird
+      // wie beim Waffen-Preset automatisch mitgezogen:
+      //   IPSC  → IPSC-Ziel
+      //   Ringe → Zielscheibe (eine bewusst gewählte Wild-Scheibe bleibt erhalten)
+      function setScoringMode(mode) {
+        const nextMode = mode === 'ipsc' ? 'ipsc' : 'rings';
+        let nextTarget = state.targetType;
+        if (nextMode === 'ipsc') nextTarget = 'ipsc';
+        else if (state.targetType === 'ipsc') nextTarget = 'target';
+
+        if (state.scoringMode === nextMode && state.targetType === nextTarget) return;
+        state.scoringMode = nextMode;
+        state.targetType = nextTarget;
         markDirty();
         renderAllEditorUI();
       }
@@ -2591,6 +2788,387 @@
           group.appendChild(chipsRow);
           wrap.appendChild(group);
         }
+      }
+
+      /* ---------- Munitions-Datensätze: Auswahl, Kaliber-Filter, Formular ---------- */
+      function findAmmoByLabel(label) {
+        const key = String(label || '').trim().toLowerCase();
+        if (!key) return null;
+        return customAmmo.find(a => a.name.toLowerCase() === key) || null;
+      }
+
+      function getSortedAmmo() {
+        return [...customAmmo].sort((a, b) => {
+          const c = normalizeCaliber(a.caliber).localeCompare(normalizeCaliber(b.caliber), 'de');
+          return c !== 0 ? c : a.name.localeCompare(b.name, 'de');
+        });
+      }
+
+      // Gruppiert (bereits sortierte) Datensätze nach Kaliber: [{ caliber, items }]
+      function groupAmmoByCaliber(list) {
+        const groups = [];
+        const byKey = new Map();
+        list.forEach(a => {
+          const key = normalizeCaliber(a.caliber);
+          if (!byKey.has(key)) {
+            const g = { caliber: a.caliber || 'Ohne Kaliber', items: [] };
+            byKey.set(key, g);
+            groups.push(g);
+          }
+          byKey.get(key).items.push(a);
+        });
+        return groups;
+      }
+
+      async function persistCustomAmmo() {
+        try {
+          await dbSetMeta('customAmmo', customAmmo);
+          if (backupFileHandle) await writeBackupToLinkedFile(true);
+        } catch (err) {
+          console.error('Munition speichern fehlgeschlagen:', err);
+          showToast('Munition konnte nicht dauerhaft gespeichert werden.');
+        }
+        renderDatalists();
+      }
+
+      function selectAmmoPreset(rec) {
+        if (!rec) return;
+        if (state.ammo !== rec.name) {
+          state.ammo = rec.name;
+          markDirty();
+        }
+        document.getElementById('inputAmmo').value = rec.name;
+        renderCanvasMetaSummary();
+        renderAmmoPresetsUI();
+      }
+
+      function createAmmoChip(rec, isActive, isDimmed) {
+        const chip = document.createElement('div');
+        chip.className = [
+          'inline-flex items-center max-w-full rounded-xl border text-xs font-semibold overflow-hidden',
+          isActive
+            ? 'bg-gold-500/20 border-gold-400 text-gold-300 shadow-sm shadow-gold-500/10'
+            : isDimmed
+              ? 'bg-tactical-950 border-white/10 text-slate-400'
+              : 'bg-tactical-850 border-white/10 text-slate-200'
+        ].join(' ');
+
+        const btnSelect = document.createElement('button');
+        btnSelect.type = 'button';
+        btnSelect.className = 'min-w-0 truncate px-2.5 py-1.5 text-left hover:bg-white/5 transition touch-manipulation';
+        btnSelect.textContent = rec.name;
+        btnSelect.title = rec.remark ? `${rec.name} – ${rec.remark}` : rec.name;
+        btnSelect.addEventListener('click', () => {
+          selectAmmoPreset(rec);
+          showToast(`${rec.name} gewählt`);
+        });
+
+        const btnEdit = document.createElement('button');
+        btnEdit.type = 'button';
+        btnEdit.className = 'shrink-0 px-2 py-1.5 text-slate-400 hover:text-gold-300 hover:bg-white/5 transition touch-manipulation';
+        btnEdit.title = 'Munitions-Datensatz bearbeiten';
+        btnEdit.setAttribute('aria-label', `${rec.name} bearbeiten`);
+        btnEdit.textContent = '✎';
+        btnEdit.addEventListener('click', () => openAmmoForm(rec.id));
+
+        const btnRemove = document.createElement('button');
+        btnRemove.type = 'button';
+        btnRemove.className = 'shrink-0 px-2 py-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/15 transition touch-manipulation';
+        btnRemove.title = 'Munitions-Datensatz entfernen';
+        btnRemove.setAttribute('aria-label', `${rec.name} entfernen`);
+        btnRemove.textContent = '×';
+        btnRemove.addEventListener('click', () => confirmRemoveAmmo(rec.id));
+
+        chip.appendChild(btnSelect);
+        chip.appendChild(btnEdit);
+        chip.appendChild(btnRemove);
+        return chip;
+      }
+
+      function createAmmoChipGroup(title, list, currentLower, options = {}) {
+        const group = document.createElement('div');
+        group.className = 'space-y-1.5';
+        const heading = document.createElement('div');
+        heading.className = 'text-[11px] font-bold uppercase tracking-wider ' + (options.highlight ? 'text-gold-400/90' : 'text-slate-400');
+        heading.textContent = title;
+        group.appendChild(heading);
+
+        if (list.length === 0 && options.emptyText) {
+          const p = document.createElement('p');
+          p.className = 'text-xs text-slate-500';
+          p.textContent = options.emptyText;
+          group.appendChild(p);
+          return group;
+        }
+
+        const row = document.createElement('div');
+        row.className = 'flex flex-wrap gap-1.5';
+        list.forEach(a => row.appendChild(createAmmoChip(a, a.name.toLowerCase() === currentLower, Boolean(options.dimmed))));
+        group.appendChild(row);
+        return group;
+      }
+
+      function renderAmmoPresetsUI() {
+        const weaponCaliber = extractCaliberFromWeaponName(state.weaponName);
+        const weaponCaliberKey = normalizeCaliber(weaponCaliber);
+        const currentLower = (state.ammo || '').trim().toLowerCase();
+        const sorted = getSortedAmmo();
+        const matching = weaponCaliberKey ? sorted.filter(a => normalizeCaliber(a.caliber) === weaponCaliberKey) : [];
+        const others = weaponCaliberKey ? sorted.filter(a => normalizeCaliber(a.caliber) !== weaponCaliberKey) : sorted;
+
+        // --- Dropdown (passende Munition zuerst) ---
+        const select = document.getElementById('selectAmmoPreset');
+        document.getElementById('ammoSelectWrap').classList.toggle('hidden', sorted.length === 0);
+        select.innerHTML = '';
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = '— Munition aus Datensätzen wählen —';
+        select.appendChild(placeholder);
+
+        let selectedId = '';
+        const appendOptGroup = (label, list) => {
+          if (list.length === 0) return;
+          const og = document.createElement('optgroup');
+          og.label = label;
+          list.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a.id;
+            opt.textContent = a.name;
+            if (a.name.toLowerCase() === currentLower) selectedId = a.id;
+            og.appendChild(opt);
+          });
+          select.appendChild(og);
+        };
+        if (weaponCaliberKey) appendOptGroup(`Passend für ${weaponCaliber}`, matching);
+        groupAmmoByCaliber(others).forEach(g => {
+          appendOptGroup(weaponCaliberKey ? `Anderes Kaliber: ${g.caliber}` : `Kaliber ${g.caliber}`, g.items);
+        });
+        select.value = selectedId;
+
+        // --- Chips ---
+        const wrap = document.getElementById('ammoChipsContainer');
+        wrap.innerHTML = '';
+
+        if (sorted.length === 0) {
+          const p = document.createElement('p');
+          p.className = 'text-xs text-slate-400 leading-relaxed';
+          p.textContent = 'Noch keine Munitions-Datensätze angelegt. Über „+ Neue Munition“ legst du Hersteller, Kaliber, Geschosstyp und Gewicht einmal an und wählst die Munition danach mit einem Tipp aus.';
+          wrap.appendChild(p);
+        } else if (weaponCaliberKey) {
+          wrap.appendChild(createAmmoChipGroup(`Passend für ${weaponCaliber}`, matching, currentLower, {
+            highlight: true,
+            emptyText: `Noch keine Munition im Kaliber ${weaponCaliber} angelegt.`
+          }));
+
+          if (others.length > 0) {
+            const selectedInOthers = others.some(a => a.name.toLowerCase() === currentLower);
+            const details = document.createElement('details');
+            details.className = 'group rounded-xl border border-white/10 bg-tactical-950/50';
+            details.open = ammoOthersExpanded || matching.length === 0 || selectedInOthers;
+
+            const summary = document.createElement('summary');
+            summary.className = 'cursor-pointer select-none px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200';
+            summary.textContent = `Andere Kaliber (${others.length})`;
+            details.appendChild(summary);
+
+            const inner = document.createElement('div');
+            inner.className = 'px-3 pb-3 space-y-2.5';
+            groupAmmoByCaliber(others).forEach(g => {
+              inner.appendChild(createAmmoChipGroup(g.caliber, g.items, currentLower, { dimmed: true }));
+            });
+            details.appendChild(inner);
+            details.addEventListener('toggle', () => { ammoOthersExpanded = details.open; });
+            wrap.appendChild(details);
+          }
+        } else {
+          groupAmmoByCaliber(sorted).forEach(g => {
+            wrap.appendChild(createAmmoChipGroup(g.caliber, g.items, currentLower));
+          });
+          const hint = document.createElement('p');
+          hint.className = 'text-[11px] text-slate-500';
+          hint.textContent = 'Kaliber-Filter: Im Waffennamen wurde kein Kaliber erkannt (Format „Name - Kaliber“, z. B. „CZ Shadow 2 - 9×19“).';
+          wrap.appendChild(hint);
+        }
+
+        // --- Info & Kaliber-Warnung zur aktuell eingetragenen Munition ---
+        const infoEl = document.getElementById('ammoSelectedInfo');
+        const warnEl = document.getElementById('ammoCaliberWarning');
+        const current = findAmmoByLabel(state.ammo);
+        const hasText = Boolean((state.ammo || '').trim());
+
+        if (current && current.remark) {
+          infoEl.textContent = `Bemerkung: ${current.remark}`;
+          infoEl.classList.remove('hidden');
+        } else if (!current && hasText && customAmmo.length > 0) {
+          infoEl.textContent = 'Freitext – nicht als Munitions-Datensatz gespeichert.';
+          infoEl.classList.remove('hidden');
+        } else {
+          infoEl.textContent = '';
+          infoEl.classList.add('hidden');
+        }
+
+        const currentKey = current ? normalizeCaliber(current.caliber) : '';
+        if (current && weaponCaliberKey && currentKey && currentKey !== weaponCaliberKey) {
+          warnEl.textContent = `⚠ Kaliber der Munition (${current.caliber}) passt nicht zur Waffe (${weaponCaliber}).`;
+          warnEl.classList.remove('hidden');
+        } else {
+          warnEl.textContent = '';
+          warnEl.classList.add('hidden');
+        }
+      }
+
+      function renderAmmoFormDatalists() {
+        const calibers = new Map();
+        const addCaliber = (c) => {
+          const text = String(c || '').trim();
+          const key = normalizeCaliber(text);
+          if (key && !calibers.has(key)) calibers.set(key, text);
+        };
+        addCaliber(extractCaliberFromWeaponName(state.weaponName));
+        customAmmo.forEach(a => addCaliber(a.caliber));
+        ALL_STANDARD_PRESETS.forEach(p => addCaliber(extractCaliberFromWeaponName(p.name)));
+        customWeapons.forEach(w => addCaliber(extractCaliberFromWeaponName(w.name)));
+        COMMON_CALIBERS.forEach(addCaliber);
+
+        const calDl = document.getElementById('caliberDatalist');
+        calDl.innerHTML = '';
+        calibers.forEach(text => {
+          const o = document.createElement('option'); o.value = text; calDl.appendChild(o);
+        });
+
+        const types = new Map();
+        [...customAmmo.map(a => a.bulletType), ...COMMON_BULLET_TYPES].forEach(t => {
+          const text = String(t || '').trim();
+          if (text && !types.has(text.toLowerCase())) types.set(text.toLowerCase(), text);
+        });
+        const typeDl = document.getElementById('bulletTypeDatalist');
+        typeDl.innerHTML = '';
+        types.forEach(text => {
+          const o = document.createElement('option'); o.value = text; typeDl.appendChild(o);
+        });
+      }
+
+      function readAmmoForm() {
+        return {
+          manufacturer: document.getElementById('ammoFormManufacturer').value,
+          caliber: document.getElementById('ammoFormCaliber').value,
+          bulletType: document.getElementById('ammoFormBulletType').value,
+          bulletWeight: document.getElementById('ammoFormWeight').value,
+          remark: document.getElementById('ammoFormRemark').value
+        };
+      }
+
+      function setAmmoFormError(message) {
+        const el = document.getElementById('ammoFormError');
+        el.textContent = message || '';
+        el.classList.toggle('hidden', !message);
+      }
+
+      function updateAmmoFormPreview() {
+        const d = readAmmoForm();
+        const weight = normalizeBulletWeight(d.bulletWeight);
+        const label = buildAmmoLabel({
+          manufacturer: d.manufacturer.replace(/\s+/g, ' '),
+          caliber: d.caliber.replace(/\s+/g, ' '),
+          bulletType: d.bulletType.replace(/\s+/g, ' '),
+          bulletWeight: weight || ''
+        });
+        document.getElementById('ammoFormPreview').textContent = label || '–';
+      }
+
+      function isAmmoFormOpen() {
+        return !document.getElementById('ammoForm').classList.contains('hidden');
+      }
+
+      function openAmmoForm(editId = null) {
+        const rec = editId ? customAmmo.find(a => a.id === editId) : null;
+        if (editId && !rec) return;
+        ammoEditId = rec ? rec.id : null;
+
+        document.getElementById('ammoFormTitle').textContent = rec ? 'Munition bearbeiten' : 'Neue Munition anlegen';
+        document.getElementById('btnAmmoFormSave').textContent = rec ? 'Änderungen speichern' : 'Speichern & wählen';
+        document.getElementById('ammoFormManufacturer').value = rec ? rec.manufacturer : '';
+        document.getElementById('ammoFormCaliber').value = rec ? rec.caliber : extractCaliberFromWeaponName(state.weaponName);
+        document.getElementById('ammoFormBulletType').value = rec ? rec.bulletType : '';
+        document.getElementById('ammoFormWeight').value = rec ? String(rec.bulletWeight || '').replace('.', ',') : '';
+        document.getElementById('ammoFormRemark').value = rec ? rec.remark : '';
+
+        renderAmmoFormDatalists();
+        setAmmoFormError('');
+        updateAmmoFormPreview();
+
+        const form = document.getElementById('ammoForm');
+        form.classList.remove('hidden');
+        form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        document.getElementById('ammoFormManufacturer').focus({ preventScroll: true });
+      }
+
+      function closeAmmoForm() {
+        ammoEditId = null;
+        setAmmoFormError('');
+        document.getElementById('ammoForm').classList.add('hidden');
+      }
+
+      async function saveAmmoForm() {
+        const d = readAmmoForm();
+        if (!d.manufacturer.trim()) return setAmmoFormError('Bitte einen Hersteller angeben.');
+        if (!d.caliber.trim()) return setAmmoFormError('Bitte ein Kaliber angeben.');
+        const weight = normalizeBulletWeight(d.bulletWeight);
+        if (weight === null) return setAmmoFormError('Gewicht bitte als Zahl in grain angeben (z. B. 124 oder 40,5).');
+
+        const editId = ammoEditId;
+        const existing = editId ? customAmmo.find(a => a.id === editId) : null;
+        if (editId && !existing) {
+          closeAmmoForm();
+          return;
+        }
+
+        const rec = sanitizeAmmoRecord({ ...d, id: existing ? existing.id : createAmmoId(), bulletWeight: weight });
+        if (!rec) return setAmmoFormError('Bitte die Munition genauer beschreiben.');
+        const duplicate = customAmmo.some(a => a.id !== rec.id && a.name.toLowerCase() === rec.name.toLowerCase());
+        if (duplicate) return setAmmoFormError(`„${rec.name}“ ist bereits als Datensatz vorhanden.`);
+
+        if (existing) {
+          const oldName = existing.name;
+          customAmmo = customAmmo.map(a => (a.id === rec.id ? rec : a));
+          // Wurde die gerade verwendete Munition umbenannt, das aktuelle Training mitziehen
+          if ((state.ammo || '').trim().toLowerCase() === oldName.toLowerCase() && state.ammo !== rec.name) {
+            state.ammo = rec.name;
+            document.getElementById('inputAmmo').value = rec.name;
+            markDirty();
+            renderCanvasMetaSummary();
+          }
+          showToast('Munitions-Datensatz aktualisiert');
+        } else {
+          customAmmo.push(rec);
+          if (state.ammo !== rec.name) {
+            state.ammo = rec.name;
+            markDirty();
+          }
+          document.getElementById('inputAmmo').value = rec.name;
+          renderCanvasMetaSummary();
+          showToast(`${rec.name} gespeichert & gewählt`);
+        }
+
+        closeAmmoForm();
+        renderAmmoPresetsUI();
+        await persistCustomAmmo();
+      }
+
+      function confirmRemoveAmmo(id) {
+        const rec = customAmmo.find(a => a.id === id);
+        if (!rec) return;
+        openConfirm(
+          'Munition entfernen?',
+          `„${rec.name}“ aus den Munitions-Datensätzen entfernen? Bereits gespeicherte Trainings behalten ihre Munitionsangabe.`,
+          async () => {
+            customAmmo = customAmmo.filter(a => a.id !== id);
+            if (ammoEditId === id) closeAmmoForm();
+            renderAmmoPresetsUI();
+            await persistCustomAmmo();
+            showToast('Munitions-Datensatz entfernt');
+          }
+        );
       }
 
       function renderRoundsUI() {
@@ -2787,6 +3365,8 @@
         if (document.activeElement !== locEl) locEl.value = state.location || '';
         if (document.activeElement !== posEl) posEl.value = state.position || '';
         if (document.activeElement !== notesEl) notesEl.value = state.notes || '';
+
+        renderAmmoPresetsUI();
 
         const metaCard = document.getElementById('entryMetaCard');
         if (state.id) {
@@ -3200,6 +3780,7 @@
         document.getElementById('backupCountSessions').textContent = String(sessions.length);
         document.getElementById('backupCountShots').textContent = String(totalShots);
         document.getElementById('backupCountWeapons').textContent = String(customWeapons.length);
+        document.getElementById('backupCountAmmo').textContent = String(customAmmo.length);
         document.getElementById('backupLastExport').textContent = lastBackupAt ? formatDateTime(lastBackupAt) : 'Noch keines';
 
         const fsSupported = typeof window.showSaveFilePicker === 'function';
@@ -3217,6 +3798,7 @@
           schemaVersion: 1,
           exportedAt: new Date().toISOString(),
           customWeapons,
+          customAmmo,
           sessions
         }, null, 2);
       }
@@ -3308,9 +3890,25 @@
             await dbSetMeta('customWeapons', customWeapons);
           }
 
+          let importedAmmoCount = 0;
+          if (Array.isArray(parsed.customAmmo)) {
+            const existingNames = new Set(customAmmo.map(a => a.name.toLowerCase()));
+            const existingIds = new Set(customAmmo.map(a => a.id));
+            sanitizeAmmoList(parsed.customAmmo).forEach(rec => {
+              if (existingNames.has(rec.name.toLowerCase())) return;
+              if (existingIds.has(rec.id)) rec.id = createAmmoId();
+              customAmmo.push(rec);
+              existingNames.add(rec.name.toLowerCase());
+              existingIds.add(rec.id);
+              importedAmmoCount += 1;
+            });
+            await dbSetMeta('customAmmo', customAmmo);
+          }
+
           await refreshSessionsFromDb();
           renderWeaponPresetsUI();
-          showToast(`${importedCount} Einträge erfolgreich importiert`);
+          renderAmmoPresetsUI();
+          showToast(`${importedCount} Einträge erfolgreich importiert${importedAmmoCount > 0 ? ` • ${importedAmmoCount} Munitions-Datensätze` : ''}`);
         } catch (err) {
           console.error('Import fehlgeschlagen:', err);
           showToast('JSON-Import fehlgeschlagen.');
@@ -3570,12 +4168,8 @@
         document.getElementById('btnKeyClearSlot').addEventListener('click', handleClearSlot);
         document.getElementById('btnKeyNextRound').addEventListener('click', handleNextRound);
 
-        document.getElementById('quickModeRings').addEventListener('click', () => {
-          state.scoringMode = 'rings'; markDirty(); renderAllEditorUI();
-        });
-        document.getElementById('quickModeIpsc').addEventListener('click', () => {
-          state.scoringMode = 'ipsc'; markDirty(); renderAllEditorUI();
-        });
+        document.getElementById('quickModeRings').addEventListener('click', () => setScoringMode('rings'));
+        document.getElementById('quickModeIpsc').addEventListener('click', () => setScoringMode('ipsc'));
 
         document.getElementById('btnClearAll').addEventListener('click', () => {
           const modeLabel = state.scoringMode === 'ipsc' ? 'IPSC-Treffer' : 'Ring-Treffer';
@@ -3607,7 +4201,7 @@
 
         document.getElementById('inputWeaponName').addEventListener('input', (e) => {
           state.weaponName = e.target.value;
-          markDirty(); renderCanvas(); renderWeaponPresetsUI();
+          markDirty(); renderCanvas(); renderWeaponPresetsUI(); renderAmmoPresetsUI();
         });
 
         document.getElementById('btnSaveCustomWeapon').addEventListener('click', async () => {
@@ -3654,8 +4248,8 @@
           btn.addEventListener('click', () => { state.targetType = btn.dataset.targetType; markDirty(); renderAllEditorUI(); });
         });
 
-        document.getElementById('btnModeRings').addEventListener('click', () => { state.scoringMode = 'rings'; markDirty(); renderAllEditorUI(); });
-        document.getElementById('btnModeIpsc').addEventListener('click', () => { state.scoringMode = 'ipsc'; markDirty(); renderAllEditorUI(); });
+        document.getElementById('btnModeRings').addEventListener('click', () => setScoringMode('rings'));
+        document.getElementById('btnModeIpsc').addEventListener('click', () => setScoringMode('ipsc'));
         document.getElementById('btnFactorMinor').addEventListener('click', () => { state.ipscFactor = 'minor'; markDirty(); renderAllEditorUI(); });
         document.getElementById('btnFactorMajor').addEventListener('click', () => { state.ipscFactor = 'major'; markDirty(); renderAllEditorUI(); });
 
@@ -3669,7 +4263,29 @@
             state[propMap[id]] = e.target.value;
             markDirty();
             renderCanvasMetaSummary();
+            if (id === 'inputAmmo') renderAmmoPresetsUI();
           });
+        });
+
+        // Munitions-Datensätze
+        document.getElementById('btnNewAmmo').addEventListener('click', () => {
+          if (isAmmoFormOpen() && ammoEditId === null) closeAmmoForm();
+          else openAmmoForm(null);
+        });
+        document.getElementById('btnAmmoFormClose').addEventListener('click', closeAmmoForm);
+        document.getElementById('btnAmmoFormCancel').addEventListener('click', closeAmmoForm);
+        document.getElementById('btnAmmoFormSave').addEventListener('click', saveAmmoForm);
+        document.querySelectorAll('.ammo-form-input').forEach(inp => {
+          inp.addEventListener('input', () => { setAmmoFormError(''); updateAmmoFormPreview(); });
+          inp.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); saveAmmoForm(); }
+          });
+        });
+        document.getElementById('selectAmmoPreset').addEventListener('change', (e) => {
+          const rec = customAmmo.find(a => a.id === e.target.value);
+          if (!rec) return;
+          selectAmmoPreset(rec);
+          showToast(`${rec.name} gewählt`);
         });
 
         // Tagebuch-Filter
@@ -3737,6 +4353,9 @@
           }
 
           if (e.key === 'Escape') {
+            const confirmOpen = !document.getElementById('confirmModal').classList.contains('hidden');
+            const zoomOpen = !document.getElementById('zoomModal').classList.contains('hidden');
+            if (!confirmOpen && !zoomOpen && isAmmoFormOpen()) closeAmmoForm();
             closeZoomModal();
             closeConfirm();
             return;
@@ -3791,6 +4410,7 @@
           db = await openDatabase();
           await migrateLegacyStorageIfNeeded();
           customWeapons = await dbGetMeta('customWeapons', []);
+          customAmmo = sanitizeAmmoList(await dbGetMeta('customAmmo', []));
           lastBackupAt = await dbGetMeta('lastBackupAt', null);
           await refreshSessionsFromDb();
         } catch (err) {
