@@ -5,7 +5,9 @@ Ergebnisgrafik im Format 1920×1080 (PNG).
 
 ## Benutzung
 
-`Schiesstagebuch.html` im Browser öffnen – keine Installation, kein Server nötig.
+Online über GitHub Pages: <https://markuskauatria.github.io/Schiesstagebuch/>
+
+Oder lokal: `Schiesstagebuch.html` im Browser öffnen – keine Installation, kein Server nötig.
 Alle Daten bleiben lokal im Browser (IndexedDB). Über **Daten → JSON-Backup** lassen sie sich
 sichern und auf ein anderes Gerät übertragen.
 
